@@ -14,7 +14,7 @@ const importantadmonition = """
 """
 
 """
-    `newarrayofsametype(old, newdata)`
+    newarrayofsametype(old, newdata)
 
 Function *for internal use only* that creates a new array wrapper of the same type and structure as `old`, but wrapping `newdata`.  This function recursively peels off array wrappers (like `KeyedArray`, `OffsetArray`, `NamedDimsArray`) to reach the underlying data, replaces it with `newdata`, and then re-wraps it. 
 
@@ -28,7 +28,7 @@ newarrayofsametype( ::Any, newdata ) = newdata
 
 
 """
-    `transferadvance(  D, x, TT, ▶, offset )`
+    transferadvance(  D, x, TT, ▶, offset )
 
 The function `transferadvance` is *for internal use only*.  It assigns memory from the memory block and then advances the `offset`.
 """
@@ -56,7 +56,7 @@ end
 
 
 """
-    `alignmem!( D :: AbstractDict, X... )``
+    alignmem!( D :: AbstractDict, X... )
 
 `alignmem!` is *for internal use only*.  It replaces the arrays stored in dictionary `D` at keys `X` with new arrays that are contiguous in memory.  
 

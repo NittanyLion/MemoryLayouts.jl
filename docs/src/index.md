@@ -39,8 +39,8 @@ function computeme( X )
     return Σ
 end
 
-print( styled"{red:original}: " ); @btime computeme( X ) setup=(X = original();)
-print( styled"{green:alignmem}: " ); @btime computeme( X ) setup=(X = alignmem( original());)
+print( styled"{(fg=0xff9999):original}: " ); @btime computeme( X ) setup=(X = original();)
+print( styled"{(fg=0x99ff99):alignmem}: " ); @btime computeme( X ) setup=(X = alignmem( original());)
 ;
 ```
 
@@ -83,9 +83,9 @@ function computeme( X )
     return Σ
 end
 
-print( styled"{red:original}: " ); @btime computeme( X ) setup=(X = original();)
-print( styled"{green:alignmem}: " ); @btime computeme( X ) setup=(X = alignmem( original());)
-print( styled"{blue:deepalignmem}: " ); @btime computeme( X ) setup=(X = deepalignmem( original());)
+print( styled"{(fg=0xff9999):original}: " ); @btime computeme( X ) setup=(X = original();)
+print( styled"{(fg=0x99ff99):alignmem}: " ); @btime computeme( X ) setup=(X = alignmem( original());)
+print( styled"{(fg=0x9999ff):deepalignmem}: " ); @btime computeme( X ) setup=(X = deepalignmem( original());)
 ;
 ```
 
@@ -106,4 +106,5 @@ deepalignmem
     - what the code does:
         * the code allocates a single chunk of memory via malloc * this memory will be owned by the first array of the ones that are to be aligned
         * so when that that array is garbage-collected, the remaining aligned arrays will no longer be accessible
+    - this is version 0.1 of this package, so there may still be some issues
 

@@ -16,7 +16,7 @@ makedocs(;
     format=Documenter.HTML(;
         canonical="https://NittanyLion.github.io/AlignMemory.jl",
         edit_link="main",
-        assets=String[],
+        assets=["assets/custom.css"],
     ),
     pages=[
         "Home" => "index.md",

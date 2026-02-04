@@ -1,0 +1,68 @@
+/* Custom CSS for AlignMemory.jl Docs */
+
+/* Code Blocks & Output */
+/* Force background to black for all code blocks */
+.content pre,
+.content pre.language-julia,
+.content pre.language-julia-repl,
+.content pre code {
+    background-color: #000000 !important;
+    color: #f8f8f2 !important; /* Ensure text is visible */
+}
+
+/* Inline Code (`text`) */
+/* Regular background (transparent), blue bold italic text */
+.content code:not(pre code) {
+    background-color: transparent !important;
+    color: blue !important;
+    font-weight: bold;
+    font-style: italic;
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.2rem;
+}
+
+/* Implementation Detail Blocks (currently using !!! warning) */
+.admonition.warning,
+.admonition.is-warning {
+    background-color: #ffffcc !important; /* Light Yellow background */
+    border-left: 5px solid #ffcc00 !important; /* Stronger yellow border */
+    color: #000000 !important; /* Black text */
+}
+
+.admonition.warning .admonition-title,
+.admonition.is-warning .admonition-title,
+.admonition.is-warning .admonition-header {
+    background-color: #ffcc00 !important; /* Yellow title background */
+    color: #000000 !important; /* Black title text */
+    font-weight: bold;
+}
+
+.admonition.warning .content,
+.admonition.is-warning .admonition-body {
+    color: #000000 !important;
+}
+
+/* Brighten colors in code blocks for readability on black background */
+
+/* Red (Strings, ANSI Red) */
+.token.string,
+.token.char,
+.token.inserted,
+.token.deleted,
+.sgr-31 {
+    color: #ff9999 !important; /* Pastel Red */
+}
+
+/* Green (Comments, ANSI Green) */
+.token.comment,
+.sgr-32 {
+    color: #99ff99 !important; /* Pastel Green */
+}
+
+/* Blue (Keywords, Functions, ANSI Blue) */
+.token.keyword,
+.token.builtin,
+.token.function,
+.sgr-34 {
+    color: #80ccff !important; /* Pastel Blue */
+}
