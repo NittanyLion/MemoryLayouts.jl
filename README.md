@@ -74,7 +74,7 @@ print( styled"{green:alignmem}: " ); @btime computeme( X ) setup=(X = alignmem( 
 > **Memory Ownership & Safety**
 > 1. The first array in the aligned structure owns the memory.
 > 2. **DO NOT RESIZE** aligned arrays (`push!`, `append!`) or the memory map will break.
-> 3. If the parent structure is garbage collected, the pointers may become invalid. Keep it alive!
+> 3. If the parent structure is garbage collected, the pointers may become invalid. Keep it alive until the pointers are no longer needed!
 
 ---
 
