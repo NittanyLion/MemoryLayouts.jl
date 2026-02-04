@@ -1,7 +1,4 @@
-using DataStructures, StyledStrings
 
-export alignmem, deepalignmem
-public alignmem!
 
 computesize( :: Any ) = 0
 computesize( x :: AbstractArray ) = isbitstype( eltype( x ) ) ? sizeof( eltype( x ) ) * length( x ) : 0
