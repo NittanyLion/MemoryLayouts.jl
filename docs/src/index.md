@@ -2,17 +2,26 @@
 CurrentModule = AlignMemory
 ```
 
-# AlignMemory.jl
+# AlignMemory.jl 🧠⚡
+
+**Optimize your memory layout for maximum cache efficiency.**
 
 Documentation for [AlignMemory](https://github.com/NittanyLion/AlignMemory.jl).
 
-## Purpose
+## 🚀 The Problem vs. The Solution
 
-The purpose of the `AlignMemory.jl` package is to make arrays contained in collections like `structs`, `arrays`, and `dicts` occupy contiguous memory space automatically.  The reason that this can be advantageous is that using contiguous memory for related objects can improve performance. 
+Standard collections in Julia (`Dict`s, `Array`s of `Array`s, `struct`s) often scatter data across memory, causing frequent **cache misses**. `AlignMemory.jl` packs this data into contiguous blocks.
+
+### 🔮 How it works
+
+| Function | Description | Analogy |
+| :--- | :--- | :--- |
+| **`alignmem(x)`** | Aligns immediate fields of `x` | Like `copy(x)` but packed |
+| **`deepalignmem(x)`** | Recursively aligns nested structures | Like `deepcopy(x)` but packed |
 
 ## Usage
 
-The package provides two exported functions: `alignmem` and `deepalignmem`.  The distinction is that `alignmem` only applies to top level objects, whereas `deepalignmem` applies to objects at all levels. The two examples below demonstrate their use.
+The package provides two exported functions: `alignmem` and `deepalignmem`. The distinction is that `alignmem` only applies to top level objects, whereas `deepalignmem` applies to objects at all levels. The two examples below demonstrate their use.
 
 ### Example for `alignmem`
 
@@ -89,7 +98,7 @@ print( styled"{(fg=0x9999ff):deepalignmem}: " ); @btime computeme( X ) setup=(X 
 ;
 ```
 
-## Other array types
+## 🔌 Compatibility & Extensions
 
 * `AlignMemory.jl` is further compatible with 
   - [`AxisKeys`](https://github.com/mcabbott/AxisKeys.jl)
@@ -107,13 +116,13 @@ deepalignmem
 
 
 
-## Caveats
+## ⚠️ Critical Usage Note
 
-!!! warning "implementation details to be mindful of"
-    - avoid resizing or reassigning arrays that are realigned
-    - any arrays that you may wish to reassign or resize at a later point in time should be specified in the optional `exclude` argument
-    - what the code does:
-        * the code allocates a single chunk of memory via malloc * this memory will be owned by the first array of the ones that are to be aligned
-        * so when that that array is garbage-collected, the remaining aligned arrays will no longer be accessible
-    - this is version 0.1 of this package, so there may still be some issues
+!!! warning "Memory Ownership & Safety"
+    1. The first array in the aligned structure owns the memory.
+    2. **DO NOT RESIZE** aligned arrays (`push!`, `append!`) or the memory map will break.
+    3. If the parent structure is garbage collected, the pointers may become invalid. Keep it alive!
+    4. Any arrays that you may wish to reassign or resize at a later point in time should be specified in the optional `exclude` argument.
+    
+    *Implementation Note:* The code allocates a single chunk of memory via `malloc`. This memory will be owned by the *first array* of the ones that are to be aligned. When that array is garbage-collected, the remaining aligned arrays will no longer be accessible.
 

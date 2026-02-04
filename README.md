@@ -1,65 +1,96 @@
-# AlignMemory.jl
+<div align="center">
+
+# AlignMemory.jl 🧠⚡
+
+**Optimize your memory layout for maximum cache efficiency.**
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://NittanyLion.github.io/AlignMemory.jl/stable/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://NittanyLion.github.io/AlignMemory.jl/dev/)
 [![Build Status](https://github.com/NittanyLion/AlignMemory.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/NittanyLion/AlignMemory.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
-`AlignMemory.jl` addresses the issue that entries of collections (`Dicts`, `Arrays`, and `structs`) are not necessarily contiguous in memory.  The advantage of contiguity is that it reduces `cache misses` and should be expected to improve performance. 
-`AlignMemory.jl` provides two functions:
-1. `alignmem`
-2. `deepalignmem` 
+</div>
 
-For instance, `s₂ = alignmem( s )` creates a copy of the contents of `s` in which the memory of the various elements of `s₂` are contiguous in memory. 
-Analogously, `s₃ = deepalignmem( s )` goes beyond `alignmem` by recursively going through `s`.  In other words, `deepalignmem` is to `alignmem` what `deepcopy` is to `copy`.
+---
 
-**Please read the documentation carefully.**
+## 🚀 The Problem vs. The Solution
 
-## Example
+Standard collections in Julia (`Dict`s, `Array`s of `Array`s, `struct`s) often scatter data across memory, causing frequent **cache misses**. `AlignMemory.jl` packs this data into contiguous blocks.
 
-* The following example illustrates the scope for performance gains:
-    ```julia
-    using AlignMemory, BenchmarkTools, StyledStrings
+The advantage of contiguity is that it reduces cache misses and should be expected to improve performance.
 
-    function original( A = 10_000, L = 100, S = 5000)
-        x = Vector{Vector{Float64}}(undef, A)
-        s = Vector{Vector{Float64}}(undef, A)
-        for i ∈ 1:A
-            x[i] = rand( L )
-            s[i] = rand( S )
-        end
-        return x
+### 🔮 How it works
+
+| Function | Description | Analogy |
+| :--- | :--- | :--- |
+| **`alignmem(x)`** | Aligns immediate fields of `x` | Like `copy(x)` but packed |
+| **`deepalignmem(x)`** | Recursively aligns nested structures | Like `deepcopy(x)` but packed |
+
+---
+
+## ⚡ Performance Example
+
+In scientific computing, memory locality is everything.
+
+> **Benchmark Result:**
+> `original`: 159.177 μs
+> `alignmem`: **111.251 μs** (🚀 43% Faster)
+
+<details>
+<summary><b>Click to see the benchmark code</b></summary>
+
+```julia
+using AlignMemory, BenchmarkTools, StyledStrings
+
+function original( A = 10_000, L = 100, S = 5000)
+    x = Vector{Vector{Float64}}(undef, A)
+    s = Vector{Vector{Float64}}(undef, A)
+    for i ∈ 1:A
+        x[i] = rand( L )
+        s[i] = rand( S )
     end
+    return x
+end
 
-    function computeme( X )
-        Σ = 0.0
-        for x ∈ X 
-            Σ += x[5] 
-        end
-        return Σ
+function computeme( X )
+    Σ = 0.0
+    for x ∈ X 
+        Σ += x[5] 
     end
+    return Σ
+end
 
-    print( styled"{red:original}: " ); @btime computeme( X ) setup=(X = original())
-    print( styled"{green:alignmem}: " ); @btime computeme( X ) setup=(X = alignmem( original()))
-    ```
-* The (single thread) output is:
-    ```
-    original:   159.177 μs (0 allocations: 0 bytes)
-    alignmem:   111.251 μs (0 allocations: 0 bytes)
-    ```
-    - in this case, the original takes **43% more time** than the aligned version
+print( styled"{red:original}: " ); @btime computeme( X ) setup=(X = original())
+print( styled"{green:alignmem}: " ); @btime computeme( X ) setup=(X = alignmem( original()))
+```
+</details>
+
 * The above example is included as `example1.jl` in the `examples` folder.
 
-## Compatibility
+---
 
-* `AlignMemory` is further compatible with
-  - [`AxisKeys`](https://github.com/mcabbott/AxisKeys.jl)
-  - [`InlineStrings`](https://github.com/JuliaStrings/InlineStrings.jl)
-  - [`NamedDimsArrays`](https://github.com/invenia/NamedDims.jl) 
-  - [`OffsetArrays`](https://github.com/JuliaArrays/OffsetArrays.jl)
-* this assumes that those packages are loaded by the user
-  
+## ⚠️ Critical Usage Note
 
-## Related packages
+> [!IMPORTANT]
+> **Memory Ownership & Safety**
+> 1. The first array in the aligned structure owns the memory.
+> 2. **DO NOT RESIZE** aligned arrays (`push!`, `append!`) or the memory map will break.
+> 3. If the parent structure is garbage collected, the pointers may become invalid. Keep it alive!
+
+---
+
+## 🔌 Compatibility & Extensions
+
+`AlignMemory` is further compatible with:
+* 🔑 [`AxisKeys`](https://github.com/mcabbott/AxisKeys.jl)
+* 📝 [`InlineStrings`](https://github.com/JuliaStrings/InlineStrings.jl)
+* 🏷️ [`NamedDimsArrays`](https://github.com/invenia/NamedDims.jl) 
+* 📏 [`OffsetArrays`](https://github.com/JuliaArrays/OffsetArrays.jl)
+
+(Assumes these packages are loaded by the user)
+
+---
+
+## 📚 Related Packages
 
 There are several other Julia packages that address memory layout and array storage, though with a different focus:
 
