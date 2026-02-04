@@ -12,8 +12,7 @@ For instance, `s₂ = alignmem( s )` creates a copy of the contents of `s` in wh
 
 Analogously, `s₃ = deepalignmem( s )` goes beyond `alignmem` by recursively going through `s`.  In other words, `deepalignmem` is to `alignmem` what `deepcopy` is to `copy`.
 
-!!! warning "important implementation details"
-    Please read the documents carefully.
+**Please read the documentation carefully.**
 
 ## Related packages
 
