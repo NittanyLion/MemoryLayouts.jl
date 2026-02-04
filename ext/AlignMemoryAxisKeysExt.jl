@@ -3,6 +3,6 @@ module AlignMemoryAxisKeysExt
 using AlignMemory
 using AxisKeys
 
-AlignMemory.NewArrayOfSameType( old::KeyedArray, new_data ) = KeyedArray( AlignMemory.NewArrayOfSameType(parent(old), new_data), axiskeys(old) )
+AlignMemory.newarrayofsametype( old::KeyedArray, newdata ) = KeyedArray( AlignMemory.newarrayofsametype(parent(old), newdata), axiskeys(old) )
 
 end

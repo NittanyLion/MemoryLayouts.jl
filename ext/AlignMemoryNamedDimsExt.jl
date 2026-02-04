@@ -3,6 +3,6 @@ module AlignMemoryNamedDimsExt
 using AlignMemory
 using NamedDims
 
-AlignMemory.NewArrayOfSameType( old::NamedDimsArray, new_data ) = NamedDimsArray( AlignMemory.NewArrayOfSameType(parent(old), new_data), dimnames(old) )
+AlignMemory.newarrayofsametype( old::NamedDimsArray, newdata ) = NamedDimsArray( AlignMemory.newarrayofsametype(parent(old), newdata), dimnames(old) )
 
 end
