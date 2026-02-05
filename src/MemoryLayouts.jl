@@ -2,9 +2,9 @@ module MemoryLayouts
 using DataStructures, StyledStrings
 using ConstructionBase
 
-export alignmem, deepalignmem
+export layoutmem, deeplayoutmem
 
-include( "align.jl" )
+include( "layout.jl" )
 
 function __init__()
     width = 80
@@ -24,8 +24,8 @@ function __init__()
     println( line( styled"{italic:Optimize memory layout for maximum cache efficiency}" ) )
     println( line( "" ) )
     println( line( styled"{bold:Available Functions:}" ) )
-    println( line( styled"• {magenta:alignmem( x )}" ) )
-    println( line( styled"• {magenta:deepalignmem( x )}" ) )
+    println( line( styled"• {magenta:layoutmem( x )}" ) )
+    println( line( styled"• {magenta:deeplayoutmem( x )}" ) )
     println( line( "" ) )
     println( line( styled"{bold,yellow:Usage Note:}" ) )
     println( line( "Aligned arrays share a single contiguous memory block" ) )

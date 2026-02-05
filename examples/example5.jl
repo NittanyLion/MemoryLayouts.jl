@@ -1,63 +1,77 @@
-using MemoryLayouts, BenchmarkTools, StyledStrings, LoopVectorization
+using MemoryLayouts, BenchmarkTools, StyledStrings, LoopVectorization, Random, Plots
 
-# Example 5: Impact of Memory Contiguity and Alignment
-# This example compares three memory layouts for Structure of Arrays (SoA):
-# 1. Standard: Separate allocations for each array (non-contiguous).
-# 2. Contiguous (Standard Alignment): Arrays packed into a single memory block with 16-byte alignment.
-# 3. Contiguous (Cache Aligned): Arrays packed and strictly aligned to 64-byte boundaries.
+# Example 5: Misalignment Penalties and Alignment Fixes
 
-struct Data
-    a::Vector{Float64}
-    b::Vector{Float64}
-    c::Vector{Float64}
-    d::Vector{Float64}
-    res::Vector{Float64}
+struct ArrayContainer
+    a :: Vector{Float64}
+    b :: Vector{Float64}
+    c :: Vector{Float64}
+    d :: Vector{Float64}
+    res :: Vector{Float64}
 end
 
-# 1. Standard independent allocations
-function create_standard(N)
-    return Data(
-        rand(N),
-        rand(N),
-        rand(N),
-        rand(N),
-        zeros(N)
-    )
+const K = 1000
+
+function original( N )
+    x = [ randn(N) for i ∈ 1:K ]
+    return ArrayContainer( x[rand(1:K)], x[rand(1:K)], x[rand(1:K)], x[rand(1:K)], x[rand(1:K)] )
 end
 
-# Computation function (SIMD optimized)
-# Uses same logic as example3 to ensure stability with LoopVectorization
-function compute!(s::Data)
-    a, b, c, d, res = s.a, s.b, s.c, s.d, s.res
-    @tturbo for i in eachindex(res)
-        # Complex computation requiring multiple streams
-        temp1 = a[i] * b[i] + c[i]
-        temp2 = d[i] * a[i] - b[i]
-        res[i] = temp1 * temp2 + sqrt( abs( c[i] * d[i] ) )
+function computeme!( ac )
+    a, b, c, d, res = ac.a, ac.b, ac.c, ac.d, ac.res
+    
+    @turbo for i ∈ eachindex( res )
+        v1 = a[i] * b[i]
+        v2 = c[i] + d[i]
+        v3 = v1 - v2
+        res[i] = v3 * v3
     end
-    return sum(res)
+    return sum( res )
 end
 
-# Use standard even size to avoid alignment edge cases with LoopVectorization
-N = 1_000_003 
+# N chosen so that N * 8 is not divisible by 64 (cache line)
+N = 10_007
 
-println(styled"{bold:Contiguity and Alignment Benchmark (N=$N)}\n")
+println( styled"{bold:Demonstrating MemoryLayouts Performance (N=$N)}\n" )
 
-# Benchmark 1: Standard
-println(styled"{yellow:1. Non-contiguous (Standard Separate Allocations)}")
-println(styled"{dim:   Arrays are allocated separately on the heap.}")
-print(styled"{red:Standard}:   ")
-data_std = create_standard(N)
-@btime compute!(s) setup=( s = create_standard(N) )
+println( styled"{yellow:1. Standard Allocations (Baseline)}" )
+println( styled"{dim:   Allocated separately. Usually 16-64 byte aligned by system allocator.}" )
+print( styled"{red:Standard}:   " )
+bstd = @benchmark computeme!( datastd ) setup=(datastd = original( N ))
+display( bstd )
 
-# Benchmark 2: Contiguous (alignment=16)
-println(styled"\n{yellow:2. Contiguous (Packed, alignment=1)}")
-println(styled"{dim:   Arrays packed into one block with standard 16-byte alignment.}")
-print(styled"{blue:alignmem(16)}: ")
-@btime compute!(s) setup=(s = alignmem(create_standard(N); alignment=1))
+println( styled"\n{yellow:2. Contiguous (layoutmem 1)}" )
+println( styled"{dim:   Packed withouut padding.}" )
+print( styled"{green:layoutmem(1)}: " )
 
-# Benchmark 3: Contiguous (Aligned, alignment=64)
-println(styled"\n{yellow:3. Contiguous (Aligned, alignment=64)}")
-println(styled"{dim:   Arrays packed into one block. Forced 64-byte (cache line) alignment.}")
-print(styled"{green:alignmem(64)}: ")
-@btime compute!(s) setup=(s = alignmem(create_standard(N); alignment=64))
+baligned1 = @benchmark computeme!( dataaligned ) setup=( dataaligned = deeplayoutmem( original( N ); alignment = 1 ) )
+display( baligned1 )
+
+
+println( styled"\n{yellow:3. Contiguous and Aligned (layoutmem 64)}" )
+println( styled"{dim:   Packed with padding to ensure 64-byte alignment for all arrays.}" )
+println( styled"{dim:   Safe for AVX-512 SIMD operations.}" )
+print( styled"{green:layoutmem(64)}: " )
+# dataaligned = deeplayoutmem( original( N ); alignment = 64 )
+baligned64 = @benchmark computeme!( dataaligned ) setup=( dataaligned = deeplayoutmem( original( N ); alignment = 64 ) )
+display( baligned64 )
+
+
+tstd = median( bstd ).time
+taligned = median( baligned64 ).time
+
+diffaligned = ( tstd - taligned ) / tstd * 100
+
+println( "\n" * "="^60 )
+println( styled"Speedup from layoutmem(64): {bold,green:$(round(diffaligned, digits=1))%}" )
+println( "="^60 )
+
+println( styled"\n{bold:Generating plot...}" )
+timesstd = bstd.times ./ 1000
+timesaligned1 = baligned1.times ./ 1000
+timesaligned64 = baligned64.times ./ 1000
+
+p = histogram( timesstd; label = "Standard", alpha = 0.5, xlabel = "Time (μs)", ylabel = "Frequency", title = "Benchmark Comparison" )
+histogram!( p, timesaligned1; label = "Aligned (1)", alpha = 0.5 )
+histogram!( p, timesaligned64; label = "Aligned (64)", alpha = 0.5 )
+display( p )

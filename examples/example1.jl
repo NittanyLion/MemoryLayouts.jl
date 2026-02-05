@@ -20,6 +20,6 @@ function computeme( X )
 end
 
 print( styled"{red:original}: " ); @btime computeme( X ) setup=(X = original())
-print( styled"{green:alignmem}: " ); @btime computeme( X ) setup=(X = alignmem( original()))
-print( styled"{blue:alignmem with 16 byte alignment}: " ); @btime computeme( X ) setup=(X = alignmem( original(); alignment = 16 ) )
-print( styled"{blue:alignmem with 64 byte alignment}: " ); @btime computeme( X ) setup=(X = alignmem( original(); alignment = 64 ) )
+print( styled"{green:layoutmem}: " ); @btime computeme( X ) setup=(X = layoutmem( original()))
+print( styled"{blue:layoutmem with 16 byte alignment}: " ); @btime computeme( X ) setup=(X = layoutmem( original(); alignment = 16 ) )
+print( styled"{blue:layoutmem with 64 byte alignment}: " ); @btime computeme( X ) setup=(X = layoutmem( original(); alignment = 64 ) )

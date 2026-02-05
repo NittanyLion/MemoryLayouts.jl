@@ -33,5 +33,5 @@ function computeme( X )
 end
 
 print( styled"{red:original}: " ); @btime computeme( X ) setup=(X = original())
-print( styled"{green:alignmem}: " ); @btime computeme( X ) setup=(X = alignmem( original()))
-print( styled"{blue:deepalignmem}: " ); @btime computeme( X ) setup=(X = deepalignmem( original()))
+print( styled"{green:layoutmem}: " ); @btime computeme( X ) setup=(X = layoutmem( original()))
+print( styled"{blue:deeplayoutmem}: " ); @btime computeme( X ) setup=(X = deeplayoutmem( original()))

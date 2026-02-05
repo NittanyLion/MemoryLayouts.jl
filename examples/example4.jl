@@ -114,7 +114,7 @@ println( styled"\n{yellow:2. Aligned Structure of Arrays (Contiguous):}" )
 println( styled"{dim:   Separate vectors for each field, contiguous memory}" )
 println( styled"{dim:   Enables SIMD and spatial locality}" )
 print( styled"{green:aligned (SIMD)}: " )
-@btime compute_simd_soa!( s ) setup=( s = alignmem( create_objects($N) ) )
+@btime compute_simd_soa!( s ) setup=( s = layoutmem( create_aligned_soa($N) ) )
 
 println( styled"\n{dim:Note: The performance gap illustrates the cost of:}" )
 println( styled"{dim:  • Pointer chasing (dereferencing objects)}" )

@@ -16,16 +16,16 @@ Standard collections in Julia (`Dicts`, `Arrays` of `Arrays`, `structs`) often s
 
 | Function | Description | Analogy |
 | :--- | :--- | :--- |
-| **`alignmem( x )`** | Aligns immediate fields of `x` | Like `copy( x )` but packed |
-| **`deepalignmem( x )`** | Recursively aligns nested structures | Like `deepcopy( x )` but packed |
+| **`layoutmem( x )`** | Aligns immediate fields of `x` | Like `copy( x )` but packed |
+| **`deeplayoutmem( x )`** | Recursively aligns nested structures | Like `deepcopy( x )` but packed |
 
 ## Usage
 
-The package provides two exported functions: `alignmem` and `deepalignmem`. The distinction is that `alignmem` only applies to top level objects, whereas `deepalignmem` applies to objects at all levels. The two examples below demonstrate their use.
+The package provides two exported functions: `layoutmem` and `deeplayoutmem`. The distinction is that `layoutmem` only applies to top level objects, whereas `deeplayoutmem` applies to objects at all levels. The two examples below demonstrate their use.
 
 ## SIMD Alignment
 
-Both `alignmem` and `deepalignmem` accept an optional `alignment` keyword argument (default `1`). This allows you to specify the byte alignment for the start of each array in the contiguous memory block.
+Both `layoutmem` and `deeplayoutmem` accept an optional `alignment` keyword argument (default `1`). This allows you to specify the byte alignment for the start of each array in the contiguous memory block.
 
 Proper memory alignment is crucial for maximizing performance with SIMD (Single Instruction, Multiple Data) instructions (e.g., AVX2, AVX-512).
 
@@ -44,16 +44,16 @@ end
 data = MyData( rand( 100 ), rand( 100 ) )
 
 # Align for AVX-512 (64-byte alignment)
-aligneddata = alignmem( data; alignment = 64 )
+aligneddata = layoutmem( data; alignment = 64 )
 
 # Verify alignment
 pointer( aligneddata.a ) # Will be a multiple of 64
 pointer( aligneddata.b ) # Will be a multiple of 64
 ```
 
-### Example for `alignmem`
+### Example for `layoutmem`
 
-The example below demonstrates how to use `alignmem`.
+The example below demonstrates how to use `layoutmem`.
 
 ```@example
 using MemoryLayouts, BenchmarkTools, StyledStrings
@@ -77,13 +77,13 @@ function computeme( X )
 end
 
 print( styled"{(fg=0xff9999):original}: " ); @btime computeme( X ) setup=(X = original();)
-print( styled"{(fg=0x99ff99):alignmem}: " ); @btime computeme( X ) setup=(X = alignmem( original());)
+print( styled"{(fg=0x99ff99):layoutmem}: " ); @btime computeme( X ) setup=(X = layoutmem( original());)
 ;
 ```
 
-### Example for `deepalignmem`
+### Example for `deeplayoutmem`
 
-The example below illustrates the use of `deepalignmem`.
+The example below illustrates the use of `deeplayoutmem`.
 
 ```@example
 using MemoryLayouts, BenchmarkTools, StyledStrings
@@ -121,8 +121,8 @@ function computeme( X )
 end
 
 print( styled"{(fg=0xff9999):original}: " ); @btime computeme( X ) setup=(X = original();)
-print( styled"{(fg=0x99ff99):alignmem}: " ); @btime computeme( X ) setup=(X = alignmem( original());)
-print( styled"{(fg=0x9999ff):deepalignmem}: " ); @btime computeme( X ) setup=(X = deepalignmem( original());)
+print( styled"{(fg=0x99ff99):layoutmem}: " ); @btime computeme( X ) setup=(X = layoutmem( original());)
+print( styled"{(fg=0x9999ff):deeplayoutmem}: " ); @btime computeme( X ) setup=(X = deeplayoutmem( original());)
 ;
 ```
 
@@ -138,8 +138,8 @@ print( styled"{(fg=0x9999ff):deepalignmem}: " ); @btime computeme( X ) setup=(X 
 ## Function documentation
 
 ```@docs
-alignmem
-deepalignmem
+layoutmem
+deeplayoutmem
 ```
 
 

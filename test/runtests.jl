@@ -7,9 +7,9 @@ struct S
 end
 
 @testset "MemoryLayouts.jl" begin
-    @testset "alignmem struct" begin
+    @testset "layoutmem struct" begin
         s = S(rand(10), rand(20))
-        s_aligned = alignmem(s)
+        s_aligned = layoutmem(s)
 
         @test s_aligned.a == s.a
         @test s_aligned.b == s.b
@@ -25,9 +25,9 @@ end
         # @test UInt(pointer(s.b)) != UInt(pointer(s.a)) + sizeof(s.a) 
     end
     
-    @testset "alignmem dict" begin
+    @testset "layoutmem dict" begin
         d = Dict(:a => rand(10), :b => rand(20))
-        d_aligned = alignmem(d)
+        d_aligned = layoutmem(d)
         
         @test d_aligned[:a] == d[:a]
         @test d_aligned[:b] == d[:b]
@@ -40,14 +40,14 @@ end
         @test diff == sizeof(d_aligned[:a]) || diff == sizeof(d_aligned[:b])
     end
 
-    @testset "deepalignmem" begin
+    @testset "deeplayoutmem" begin
         struct DeepS
             x::S
             y::Vector{Int}
         end
         
         ds = DeepS(S(rand(5), rand(5)), rand(Int, 5))
-        ds_aligned = deepalignmem(ds)
+        ds_aligned = deeplayoutmem(ds)
         
         @test ds_aligned.x.a == ds.x.a
         @test ds_aligned.y == ds.y
@@ -68,7 +68,7 @@ end
         # 80 is not multiple of 64 (64 + 16).
         # So padding of 48 bytes needed? (80 + 48 = 128 = 2*64).
         
-        s_aligned = alignmem(s, alignment=64)
+        s_aligned = layoutmem(s, alignment=64)
         
         pa = pointer(s_aligned.a)
         pb = pointer(s_aligned.b)

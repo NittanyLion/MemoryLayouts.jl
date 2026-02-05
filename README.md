@@ -22,8 +22,8 @@ The advantage of contiguity is that it reduces cache misses and should be expect
 
 | Function | Description | Analogy |
 | :--- | :--- | :--- |
-| **`alignmem( x )`** | Aligns immediate fields of `x` | Like `copy( x )` but packed |
-| **`deepalignmem( x )`** | Recursively aligns nested structures | Like `deepcopy( x )` but packed |
+| **`layoutmem( x )`** | Aligns immediate fields of `x` | Like `copy( x )` but packed |
+| **`deeplayoutmem( x )`** | Recursively aligns nested structures | Like `deepcopy( x )` but packed |
 
 ### 🚀 SIMD Optimization
 
@@ -32,7 +32,7 @@ This allows aligning data to specific byte boundaries (e.g., 32 or 64 bytes), wh
 
 ```julia
 # Align for AVX-512 (64-byte alignment)
-aligneddata = alignmem( data; alignment = 64 )
+aligneddata = layoutmem( data; alignment = 64 )
 ```
 
 ---
@@ -43,7 +43,7 @@ In scientific computing, memory locality is everything.
 
 > **Benchmark Result:**
 > `original`: 159.177 μs
-> `alignmem`: **111.251 μs** (🚀 43% Faster)
+> `layoutmem`: **111.251 μs** (🚀 43% Faster)
 
 <details>
 <summary><b>Click to see the benchmark code</b></summary>
@@ -70,7 +70,7 @@ function computeme( X )
 end
 
 print( styled"{red:original}: " ); @btime computeme( X ) setup=(X = original())
-print( styled"{green:alignmem}: " ); @btime computeme( X ) setup=(X = alignmem( original()))
+print( styled"{green:layoutmem}: " ); @btime computeme( X ) setup=(X = layoutmem( original()))
 ```
 </details>
 

@@ -65,11 +65,11 @@ end
 
 
 """
-    alignmem(s; exclude = Symbol[], alignment::Int=1)
+    layoutmem(s; exclude = Symbol[], alignment::Int=1)
 
-`alignmem` aligns the memory of arrays within the object `s`, whose type should be one of `struct`, `AbstractArray`, or `AbstractDict`
+`layoutmem` aligns the memory of arrays within the object `s`, whose type should be one of `struct`, `AbstractArray`, or `AbstractDict`
 
-`alignmem` creates a new instance of `s` (or copy of `s`) where the arrays are stored contiguously in memory.
+`layoutmem` creates a new instance of `s` (or copy of `s`) where the arrays are stored contiguously in memory.
 
 The `alignment` keyword argument specifies the memory alignment in bytes. This is particularly useful for SIMD operations, where aligning data to 16, 32, or 64 bytes can improve performance.
 
@@ -77,7 +77,7 @@ Excluded items are preserved as-is (or deep-copied in some contexts) but not pac
 
 $importantadmonition
 """
-function alignmem( s :: AbstractArray{T}; exclude = Symbol[], alignment :: Int = 1 ) where T
+function layoutmem( s :: AbstractArray{T}; exclude = Symbol[], alignment :: Int = 1 ) where T
     isbitstype( T ) && return s                 # don't do anything for objects that are not isbits
     fn = eachindex( s )                         #
     fnalign = filter( k -> k ∉ exclude, fn )    # omit the fields that are to be excluded
@@ -99,7 +99,7 @@ function alignmem( s :: AbstractArray{T}; exclude = Symbol[], alignment :: Int =
     return res
 end
 
-function alignmem( s :: T; exclude = Symbol[], alignment :: Int = 1 ) where T
+function layoutmem( s :: T; exclude = Symbol[], alignment :: Int = 1 ) where T
     isbitstype( T ) && return s 
     if !isstructtype( T ) 
         @warn styled"can only do {green:structs}, {green:array types}, and {green:dicts} at this point; {red:$T} is none of the above" 
@@ -117,7 +117,7 @@ function alignmem( s :: T; exclude = Symbol[], alignment :: Int = 1 ) where T
 end
 
 
-function alignmem( s :: AbstractDict; exclude = Symbol[], alignment::Int=1 )
+function layoutmem( s :: AbstractDict; exclude = Symbol[], alignment::Int=1 )
     D = copy( s )
     keysalign = filter( k -> k ∉ exclude, keys(D) )
     totalsize = sum( k -> computesize( D[k]; alignment=alignment ), keysalign )
@@ -153,11 +153,11 @@ deeptransfer( x :: T, ■ :: Vector{UInt8}, offset :: Ref{Int}; exclude = Symbol
     isbitstype( T ) || !isstructtype( T ) ? x : constructorof(T)( ( k ∈ exclude ? deepcopy( getfield( x, k ) ) : deeptransfer( getfield( x, k ), ■, offset; exclude=exclude, alignment=alignment ) for k ∈ fieldnames( T ) )... ) 
 
 """
-    deepalignmem( x; exclude = Symbol[], alignment::Int=1 ) 
+    deeplayoutmem( x; exclude = Symbol[], alignment::Int=1 ) 
 
-`deepalignmem` recursively aligns memory of arrays within `x` and its fields
+`deeplayoutmem` recursively aligns memory of arrays within `x` and its fields
 
-Unlike `alignmem`, which only aligns the immediate fields/elements of `x`, `deepalignmem` traverses the structure recursively.  In other words, `deepalignmem` is to `alignmem` what `deepcopy` is to `copy`.
+Unlike `layoutmem`, which only aligns the immediate fields/elements of `x`, `deeplayoutmem` traverses the structure recursively.  In other words, `deeplayoutmem` is to `layoutmem` what `deepcopy` is to `copy`.
 
 The `alignment` keyword argument specifies the memory alignment in bytes. This is particularly useful for SIMD operations, where aligning data to 16, 32, or 64 bytes can improve performance.
 
@@ -165,7 +165,7 @@ Excluded items are preserved as-is (or deep-copied in some contexts) but not pac
 
 $importantadmonition
 """
-function deepalignmem( x; exclude = Symbol[], alignment::Int=1 )
+function deeplayoutmem( x; exclude = Symbol[], alignment::Int=1 )
     sz = computesizedeep( x; exclude = exclude, alignment=alignment )
     sz == 0 && return deepcopy( x )
     ■ = Vector{UInt8}( undef, sz + alignment )
