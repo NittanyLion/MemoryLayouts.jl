@@ -62,7 +62,6 @@ end
 
 
 
-@info styled"{(fg=white,bg=0x000000),bold:{(fg=0x00ffff):Resizing arrays in structs with aligned memory} will {red:break memory contiguity}. Users should use the {magenta:exclude} option for arrays for which resizing is desirable.}"
 
 
 """

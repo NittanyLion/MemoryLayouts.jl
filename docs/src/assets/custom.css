@@ -5,9 +5,99 @@
 .content pre,
 .content pre.language-julia,
 .content pre.language-julia-repl,
-.content pre code {
+.content pre code,
+.hljs {
     background-color: #000000 !important;
     color: #f8f8f2 !important; /* Ensure text is visible */
+}
+
+/* Override all possible syntax highlighting selectors */
+/* Strings - Make them lighter/pastel */
+pre code .hljs-string,
+pre .hljs-string,
+.hljs-string,
+pre code .s,
+pre .s,
+pre code .s1,
+pre .s1,
+pre code .s2,
+pre .s2 {
+    color: #ffb3b3 !important; /* Very light pastel red */
+}
+
+/* Comments - Lighter green */
+pre code .hljs-comment,
+pre .hljs-comment,
+.hljs-comment,
+pre code .c,
+pre .c,
+pre code .c1,
+pre .c1,
+pre code .cm,
+pre .cm {
+    color: #b3ffb3 !important; /* Very light pastel green */
+    font-style: italic !important;
+}
+
+/* Keywords - Lighter blue */
+pre code .hljs-keyword,
+pre .hljs-keyword,
+.hljs-keyword,
+pre code .hljs-built_in,
+pre .hljs-built_in,
+.hljs-built_in,
+pre code .k,
+pre .k,
+pre code .kd,
+pre .kd {
+    color: #b3d9ff !important; /* Very light pastel blue */
+    font-weight: bold !important;
+}
+
+/* Functions */
+pre code .hljs-function,
+pre .hljs-function,
+.hljs-function,
+pre code .hljs-title.function,
+pre .hljs-title.function,
+pre code .nf,
+pre .nf {
+    color: #99ccff !important; /* Light blue */
+}
+
+/* Numbers */
+pre code .hljs-number,
+pre .hljs-number,
+.hljs-number,
+pre code .hljs-literal,
+pre .hljs-literal,
+pre code .m,
+pre .m,
+pre code .mi,
+pre .mi,
+pre code .mf,
+pre .mf {
+    color: #ffcc99 !important; /* Light orange */
+}
+
+/* Types */
+pre code .hljs-type,
+pre .hljs-type,
+.hljs-type,
+pre code .hljs-class,
+pre .hljs-class,
+pre code .nc,
+pre .nc {
+    color: #cc99ff !important; /* Light purple */
+}
+
+/* Variables */
+pre code .hljs-variable,
+pre .hljs-variable,
+.hljs-variable,
+pre code .n,
+pre .n {
+    color: #f0f0f0 !important; /* Very light gray */
 }
 
 /* Inline Code (`text`) - Theme-aware colors */
@@ -35,6 +125,14 @@ html[data-theme="catppuccin-mocha"] .content code:not(pre code) {
     border-radius: 0.2rem;
 }
 
+/* Fallback for any theme not explicitly listed */
+.content code:not(pre code) {
+    font-weight: bold;
+    font-style: italic;
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.2rem;
+}
+
 /* Implementation Detail Blocks (currently using !!! warning) */
 .admonition.warning,
 .admonition.is-warning {
@@ -56,89 +154,51 @@ html[data-theme="catppuccin-mocha"] .content code:not(pre code) {
     color: #000000 !important;
 }
 
-/* Theme-aware colors for syntax highlighting in code blocks */
-/* Light theme - darker, more saturated colors for better readability */
-html[data-theme="documenter-light"] .content pre .token.string,
-html[data-theme="documenter-light"] .content pre .token.char,
-html[data-theme="documenter-light"] .content pre .token.inserted,
-html[data-theme="documenter-light"] .content pre .token.deleted,
-html[data-theme="documenter-light"] .content pre .sgr-31,
-html[data-theme="catppuccin-latte"] .content pre .token.string,
-html[data-theme="catppuccin-latte"] .content pre .token.char,
-html[data-theme="catppuccin-latte"] .content pre .token.inserted,
-html[data-theme="catppuccin-latte"] .content pre .token.deleted,
-html[data-theme="catppuccin-latte"] .content pre .sgr-31 {
-    color: #ff6b6b !important; /* Brighter, more saturated red for light mode */
+/* Fix inline code in warning blocks - override theme colors */
+.admonition.warning code:not(pre code),
+.admonition.is-warning code:not(pre code) {
+    background-color: rgba(0, 0, 0, 0.1) !important;
+    color: #003366 !important; /* Dark blue that's readable on yellow */
+    font-weight: bold !important;
+    font-style: normal !important;
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.2rem;
 }
 
-html[data-theme="documenter-light"] .content pre .token.comment,
-html[data-theme="documenter-light"] .content pre .sgr-32,
-html[data-theme="catppuccin-latte"] .content pre .token.comment,
-html[data-theme="catppuccin-latte"] .content pre .sgr-32 {
-    color: #40cc40 !important; /* Brighter, more saturated green for light mode */
+
+/* ANSI color codes in terminal output */
+/* Red ANSI */
+.ansi .sgr31,
+.ansi .sgr91 {
+    color: #ff6b6b !important;
 }
 
-html[data-theme="documenter-light"] .content pre .token.keyword,
-html[data-theme="documenter-light"] .content pre .token.builtin,
-html[data-theme="documenter-light"] .content pre .token.function,
-html[data-theme="documenter-light"] .content pre .sgr-34,
-html[data-theme="catppuccin-latte"] .content pre .token.keyword,
-html[data-theme="catppuccin-latte"] .content pre .token.builtin,
-html[data-theme="catppuccin-latte"] .content pre .token.function,
-html[data-theme="catppuccin-latte"] .content pre .sgr-34 {
-    color: #4da6ff !important; /* Brighter, more saturated blue for light mode */
+/* Green ANSI */
+.ansi .sgr32,
+.ansi .sgr92 {
+    color: #40cc40 !important;
 }
 
-/* Dark theme - pastel colors for softer appearance on black background */
-html[data-theme="documenter-dark"] .content pre .token.string,
-html[data-theme="documenter-dark"] .content pre .token.char,
-html[data-theme="documenter-dark"] .content pre .token.inserted,
-html[data-theme="documenter-dark"] .content pre .token.deleted,
-html[data-theme="documenter-dark"] .content pre .sgr-31,
-html[data-theme="catppuccin-frappe"] .content pre .token.string,
-html[data-theme="catppuccin-frappe"] .content pre .token.char,
-html[data-theme="catppuccin-frappe"] .content pre .token.inserted,
-html[data-theme="catppuccin-frappe"] .content pre .token.deleted,
-html[data-theme="catppuccin-frappe"] .content pre .sgr-31,
-html[data-theme="catppuccin-macchiato"] .content pre .token.string,
-html[data-theme="catppuccin-macchiato"] .content pre .token.char,
-html[data-theme="catppuccin-macchiato"] .content pre .token.inserted,
-html[data-theme="catppuccin-macchiato"] .content pre .token.deleted,
-html[data-theme="catppuccin-macchiato"] .content pre .sgr-31,
-html[data-theme="catppuccin-mocha"] .content pre .token.string,
-html[data-theme="catppuccin-mocha"] .content pre .token.char,
-html[data-theme="catppuccin-mocha"] .content pre .token.inserted,
-html[data-theme="catppuccin-mocha"] .content pre .token.deleted,
-html[data-theme="catppuccin-mocha"] .content pre .sgr-31 {
-    color: #ff9999 !important; /* Pastel Red */
+/* Blue ANSI */
+.ansi .sgr34,
+.ansi .sgr94 {
+    color: #4da6ff !important;
 }
 
-html[data-theme="documenter-dark"] .content pre .token.comment,
-html[data-theme="documenter-dark"] .content pre .sgr-32,
-html[data-theme="catppuccin-frappe"] .content pre .token.comment,
-html[data-theme="catppuccin-frappe"] .content pre .sgr-32,
-html[data-theme="catppuccin-macchiato"] .content pre .token.comment,
-html[data-theme="catppuccin-macchiato"] .content pre .sgr-32,
-html[data-theme="catppuccin-mocha"] .content pre .token.comment,
-html[data-theme="catppuccin-mocha"] .content pre .sgr-32 {
-    color: #99ff99 !important; /* Pastel Green */
+/* Cyan ANSI */
+.ansi .sgr36,
+.ansi .sgr96 {
+    color: #40e0d0 !important;
 }
 
-html[data-theme="documenter-dark"] .content pre .token.keyword,
-html[data-theme="documenter-dark"] .content pre .token.builtin,
-html[data-theme="documenter-dark"] .content pre .token.function,
-html[data-theme="documenter-dark"] .content pre .sgr-34,
-html[data-theme="catppuccin-frappe"] .content pre .token.keyword,
-html[data-theme="catppuccin-frappe"] .content pre .token.builtin,
-html[data-theme="catppuccin-frappe"] .content pre .token.function,
-html[data-theme="catppuccin-frappe"] .content pre .sgr-34,
-html[data-theme="catppuccin-macchiato"] .content pre .token.keyword,
-html[data-theme="catppuccin-macchiato"] .content pre .token.builtin,
-html[data-theme="catppuccin-macchiato"] .content pre .token.function,
-html[data-theme="catppuccin-macchiato"] .content pre .sgr-34,
-html[data-theme="catppuccin-mocha"] .content pre .token.keyword,
-html[data-theme="catppuccin-mocha"] .content pre .token.builtin,
-html[data-theme="catppuccin-mocha"] .content pre .token.function,
-html[data-theme="catppuccin-mocha"] .content pre .sgr-34 {
-    color: #80ccff !important; /* Pastel Blue */
+/* Yellow ANSI */
+.ansi .sgr33,
+.ansi .sgr93 {
+    color: #ffff66 !important;
+}
+
+/* Magenta ANSI */
+.ansi .sgr35,
+.ansi .sgr95 {
+    color: #ff66ff !important;
 }

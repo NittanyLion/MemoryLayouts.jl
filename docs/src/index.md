@@ -144,12 +144,4 @@ deepalignmem
 
 
 
-## ⚠️ Critical Usage Note
-
-!!! warning "Memory Contiguity"
-    1. Aligned arrays share a single contiguous memory block.
-    2. **Resizing** aligned arrays (`push!`, `append!`) will cause them to be reallocated elsewhere, breaking memory contiguity.
-    3. Any arrays that you may wish to reassign or resize at a later point in time should be specified in the optional `exclude` argument.
-    
-    *Implementation Note:* The code allocates a single chunk of memory (`Vector{UInt8}`) to hold all the data. This memory is kept alive by the aligned arrays.
 
