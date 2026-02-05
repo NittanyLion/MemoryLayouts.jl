@@ -10,7 +10,7 @@ const importantadmonition = """
     Users should be mindful of the following important implementation details:
     - aligned arrays share a single contiguous memory block
     - resizing any of the arrays (`push!`, `append!`) will break this contiguity for that array (it will be reallocated elsewhere)
-    - strict contiguity is only guaranteed immediately after alignment
+    - Contiguity is maintained until an array is resized or reassigned
 """
 
 
