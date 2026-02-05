@@ -10,11 +10,25 @@
     color: #f8f8f2 !important; /* Ensure text is visible */
 }
 
-/* Inline Code (`text`) */
-/* Regular background (transparent), blue bold italic text */
-.content code:not(pre code) {
-    background-color: transparent !important;
-    color: blue !important;
+/* Inline Code (`text`) - Theme-aware colors */
+/* Light theme inline code */
+html[data-theme="documenter-light"] .content code:not(pre code),
+html[data-theme="catppuccin-latte"] .content code:not(pre code) {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+    color: #005580 !important; /* Darker, more readable blue for light mode */
+    font-weight: bold;
+    font-style: italic;
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.2rem;
+}
+
+/* Dark theme inline code */
+html[data-theme="documenter-dark"] .content code:not(pre code),
+html[data-theme="catppuccin-frappe"] .content code:not(pre code),
+html[data-theme="catppuccin-macchiato"] .content code:not(pre code),
+html[data-theme="catppuccin-mocha"] .content code:not(pre code) {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: #66b3ff !important; /* Lighter, more readable blue for dark mode */
     font-weight: bold;
     font-style: italic;
     padding: 0.1rem 0.3rem;
@@ -42,27 +56,89 @@
     color: #000000 !important;
 }
 
-/* Brighten colors in code blocks for readability on black background */
+/* Theme-aware colors for syntax highlighting in code blocks */
+/* Light theme - darker, more saturated colors for better readability */
+html[data-theme="documenter-light"] .content pre .token.string,
+html[data-theme="documenter-light"] .content pre .token.char,
+html[data-theme="documenter-light"] .content pre .token.inserted,
+html[data-theme="documenter-light"] .content pre .token.deleted,
+html[data-theme="documenter-light"] .content pre .sgr-31,
+html[data-theme="catppuccin-latte"] .content pre .token.string,
+html[data-theme="catppuccin-latte"] .content pre .token.char,
+html[data-theme="catppuccin-latte"] .content pre .token.inserted,
+html[data-theme="catppuccin-latte"] .content pre .token.deleted,
+html[data-theme="catppuccin-latte"] .content pre .sgr-31 {
+    color: #ff6b6b !important; /* Brighter, more saturated red for light mode */
+}
 
-/* Red (Strings, ANSI Red) */
-.token.string,
-.token.char,
-.token.inserted,
-.token.deleted,
-.sgr-31 {
+html[data-theme="documenter-light"] .content pre .token.comment,
+html[data-theme="documenter-light"] .content pre .sgr-32,
+html[data-theme="catppuccin-latte"] .content pre .token.comment,
+html[data-theme="catppuccin-latte"] .content pre .sgr-32 {
+    color: #40cc40 !important; /* Brighter, more saturated green for light mode */
+}
+
+html[data-theme="documenter-light"] .content pre .token.keyword,
+html[data-theme="documenter-light"] .content pre .token.builtin,
+html[data-theme="documenter-light"] .content pre .token.function,
+html[data-theme="documenter-light"] .content pre .sgr-34,
+html[data-theme="catppuccin-latte"] .content pre .token.keyword,
+html[data-theme="catppuccin-latte"] .content pre .token.builtin,
+html[data-theme="catppuccin-latte"] .content pre .token.function,
+html[data-theme="catppuccin-latte"] .content pre .sgr-34 {
+    color: #4da6ff !important; /* Brighter, more saturated blue for light mode */
+}
+
+/* Dark theme - pastel colors for softer appearance on black background */
+html[data-theme="documenter-dark"] .content pre .token.string,
+html[data-theme="documenter-dark"] .content pre .token.char,
+html[data-theme="documenter-dark"] .content pre .token.inserted,
+html[data-theme="documenter-dark"] .content pre .token.deleted,
+html[data-theme="documenter-dark"] .content pre .sgr-31,
+html[data-theme="catppuccin-frappe"] .content pre .token.string,
+html[data-theme="catppuccin-frappe"] .content pre .token.char,
+html[data-theme="catppuccin-frappe"] .content pre .token.inserted,
+html[data-theme="catppuccin-frappe"] .content pre .token.deleted,
+html[data-theme="catppuccin-frappe"] .content pre .sgr-31,
+html[data-theme="catppuccin-macchiato"] .content pre .token.string,
+html[data-theme="catppuccin-macchiato"] .content pre .token.char,
+html[data-theme="catppuccin-macchiato"] .content pre .token.inserted,
+html[data-theme="catppuccin-macchiato"] .content pre .token.deleted,
+html[data-theme="catppuccin-macchiato"] .content pre .sgr-31,
+html[data-theme="catppuccin-mocha"] .content pre .token.string,
+html[data-theme="catppuccin-mocha"] .content pre .token.char,
+html[data-theme="catppuccin-mocha"] .content pre .token.inserted,
+html[data-theme="catppuccin-mocha"] .content pre .token.deleted,
+html[data-theme="catppuccin-mocha"] .content pre .sgr-31 {
     color: #ff9999 !important; /* Pastel Red */
 }
 
-/* Green (Comments, ANSI Green) */
-.token.comment,
-.sgr-32 {
+html[data-theme="documenter-dark"] .content pre .token.comment,
+html[data-theme="documenter-dark"] .content pre .sgr-32,
+html[data-theme="catppuccin-frappe"] .content pre .token.comment,
+html[data-theme="catppuccin-frappe"] .content pre .sgr-32,
+html[data-theme="catppuccin-macchiato"] .content pre .token.comment,
+html[data-theme="catppuccin-macchiato"] .content pre .sgr-32,
+html[data-theme="catppuccin-mocha"] .content pre .token.comment,
+html[data-theme="catppuccin-mocha"] .content pre .sgr-32 {
     color: #99ff99 !important; /* Pastel Green */
 }
 
-/* Blue (Keywords, Functions, ANSI Blue) */
-.token.keyword,
-.token.builtin,
-.token.function,
-.sgr-34 {
+html[data-theme="documenter-dark"] .content pre .token.keyword,
+html[data-theme="documenter-dark"] .content pre .token.builtin,
+html[data-theme="documenter-dark"] .content pre .token.function,
+html[data-theme="documenter-dark"] .content pre .sgr-34,
+html[data-theme="catppuccin-frappe"] .content pre .token.keyword,
+html[data-theme="catppuccin-frappe"] .content pre .token.builtin,
+html[data-theme="catppuccin-frappe"] .content pre .token.function,
+html[data-theme="catppuccin-frappe"] .content pre .sgr-34,
+html[data-theme="catppuccin-macchiato"] .content pre .token.keyword,
+html[data-theme="catppuccin-macchiato"] .content pre .token.builtin,
+html[data-theme="catppuccin-macchiato"] .content pre .token.function,
+html[data-theme="catppuccin-macchiato"] .content pre .sgr-34,
+html[data-theme="catppuccin-mocha"] .content pre .token.keyword,
+html[data-theme="catppuccin-mocha"] .content pre .token.builtin,
+html[data-theme="catppuccin-mocha"] .content pre .token.function,
+html[data-theme="catppuccin-mocha"] .content pre .sgr-34 {
     color: #80ccff !important; /* Pastel Blue */
 }
