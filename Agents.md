@@ -8,8 +8,8 @@ This document provides guidance for AI agents assisting users with the MemoryLay
 MemoryLayouts.jl is a Julia package that optimizes memory layout by ensuring that elements of collections (Arrays, Dicts, structs) are stored contiguously in memory. This reduces cache misses and improves performance, particularly for data structures with multiple array fields.
 
 ### Core Functions
-- **`alignmem(x; exclude=[])`**: Aligns memory for immediate fields/elements of `x`
-- **`deepalignmem(x; exclude=[])`**: Recursively aligns memory throughout the entire structure
+- **`alignmem(x; exclude=[], alignment=1)`**: Aligns memory for immediate fields/elements of `x`. `alignment` specifies byte alignment (e.g., 64 for AVX-512).
+- **`deepalignmem(x; exclude=[], alignment=1)`**: Recursively aligns memory throughout the entire structure.
 - **`alignmem!(D, keys...)`**: Internal function that performs in-place memory alignment for dictionary entries
 
 ## Key Concepts for AI Agents
@@ -136,7 +136,7 @@ When users combine these packages, ensure alignment preserves wrapper properties
 ### When Alignment Helps Most:
 1. **Stride-1 access patterns**: Sequential memory access
 2. **Multiple arrays accessed together**: Reduces cache line loads
-3. **SIMD operations**: Contiguous memory enables vectorization
+3. **SIMD operations**: Contiguous memory enables vectorization. Use `alignment=32` (AVX2) or `alignment=64` (AVX-512) for best results.
 4. **GPU transfers**: Contiguous memory simplifies data movement
 
 ### When Alignment May Not Help:
