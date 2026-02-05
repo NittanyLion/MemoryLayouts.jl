@@ -1,4 +1,4 @@
-using MemoryLayouts, BenchmarkTools, StyledStrings
+using MemoryLayouts, BenchmarkTools, StyledStrings, Random
 
 function original( A = 10_000, L = 100, S = 5000)
     x = Vector{Vector{Float64}}(undef, A)
@@ -6,6 +6,7 @@ function original( A = 10_000, L = 100, S = 5000)
     for i ∈ 1:A
         x[i] = rand( L )
         s[i] = rand( S )
+        v = randstring( 33 )
     end
     return x
 end
@@ -20,3 +21,5 @@ end
 
 print( styled"{red:original}: " ); @btime computeme( X ) setup=(X = original())
 print( styled"{green:alignmem}: " ); @btime computeme( X ) setup=(X = alignmem( original()))
+print( styled"{blue:alignmem with 16 byte alignment}: " ); @btime computeme( X ) setup=(X = alignmem( original(); alignment = 16 ) )
+print( styled"{blue:alignmem with 64 byte alignment}: " ); @btime computeme( X ) setup=(X = alignmem( original(); alignment = 64 ) )

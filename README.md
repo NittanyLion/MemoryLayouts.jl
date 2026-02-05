@@ -28,7 +28,7 @@ The advantage of contiguity is that it reduces cache misses and should be expect
 ### 🚀 SIMD Optimization
 
 Both functions accept an optional `alignment` keyword argument (default `1`).
-This allows aligning data to specific byte boundaries (e.g., 32 or 64 bytes), which is crucial for maximizing performance with **SIMD** instructions (AVX2, AVX-512).
+This allows aligning data to specific byte boundaries (e.g., 32 or 64 bytes), which is relevant for maximizing performance with **SIMD** instructions (AVX2, AVX-512).
 
 ```julia
 # Align for AVX-512 (64-byte alignment)
