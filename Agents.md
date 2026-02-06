@@ -8,8 +8,13 @@ This document provides guidance for AI agents assisting users with the MemoryLay
 MemoryLayouts.jl is a Julia package that optimizes memory layout by ensuring that elements of collections (Arrays, Dicts, structs) are stored contiguously in memory. This reduces cache misses and improves performance, particularly for data structures with multiple array fields.
 
 ### Core Functions
-- **`layout( x; exclude = [], alignment = 1 )`**: Aligns memory for immediate fields/elements of `x`. `alignment` specifies byte alignment (e.g., 64 for AVX-512).
-- **`deeplayout( x; exclude = [], alignment = 1 )`**: Recursively aligns memory throughout the entire structure.
+- **`layout( x; exclude = Symbol[], alignment = 1, livedangerously = false )`**: Aligns memory for immediate fields/elements of `x`.
+    - `alignment`: Specifies byte alignment (e.g., 64 for AVX-512).
+    - `livedangerously`: Disables safety checks (cycle detection, aliasing) for performance (default: `false`).
+- **`deeplayout( x; exclude = Symbol[], alignment = 1, livedangerously = false )`**: Recursively aligns memory throughout the entire structure.
+- **`layout!( x; ... )`**: In-place version for `AbstractDict`.
+- **`layoutstats( x; ... )`**: Returns statistics about memory layout (size, blocks, fragmentation reduction).
+- **`deeplayoutstats( x; ... )`**: Recursive version of `layoutstats`.
 
 ## Key Concepts for AI Agents
 
@@ -32,15 +37,23 @@ Suggest this package when users:
 **Always warn users about these crucial limitations:**
 
 #### Memory Ownership Model
-- The first array (offset 0) owns the malloc'd memory block
-- Other arrays are views into this same block
-- **If the first array is garbage collected, accessing other arrays becomes unsafe**
+- All aligned arrays created by `layout` share a single underlying `Vector{UInt8}` memory block.
+- Each array is a view (`unsafe_wrap`) into this block.
+- **Safety Guarantee**: Each aligned array has a finalizer that keeps the underlying memory block alive. As long as you hold a reference to *any* of the aligned arrays, the memory block is safe from garbage collection.
+- This differs from standard arrays which manage their own memory independently.
 
-#### Resizing Dangers
-- **Never resize aligned arrays** (no `push!`, `append!`, `resize!`, etc.)
-- Resizing the first array invalidates all other array pointers
-- Resizing other arrays breaks memory contiguity but doesn't crash
-- If resizing is needed, users should use the `exclude` optional argument
+#### Resizing Limitations
+- **Avoid resizing aligned arrays** (`push!`, `append!`, `resize!`, etc.).
+- Resizing an aligned array will likely trigger a reallocation, moving that specific array's data to a new memory location.
+- **Consequence**: The array is effectively "detached" from the contiguous memory block, losing the cache locality benefits.
+- It will **not** crash or invalidate other arrays (as they are independent views), but it defeats the purpose of using `MemoryLayouts.jl`.
+- The space originally occupied by the resized array in the contiguous block remains allocated (until all references die) but unused (fragmentation).
+
+### 4. Built-in Safety Mechanisms
+Great efforts have been exerted to ensure safety in what is typically an unsafe domain (memory manipulation). The package includes sophisticated mechanisms to protect users:
+- **Cycle Detection**: Prevents infinite recursion and stack overflows when processing self-referential structures.
+- **Aliasing Checks**: Detects shared references within data structures. The package warns users if an object appears multiple times (which results in duplication in the linear memory layout) rather than silently breaking reference equality.
+- **Opt-in Unsafety**: These checks are active by default. Users must explicitly pass `livedangerously=true` to disable them, ensuring that safety is the default and unsafety is a conscious choice.
 
 ## Common User Scenarios and Solutions
 
@@ -172,10 +185,10 @@ end
 ## Debugging Assistance
 
 Help users debug by checking:
-1. **Data types**: Use `isbitstype( eltype( array ) )` to verify optimization applies
-2. **Memory layout**: Use `pointer( array )` to verify contiguity
-3. **Ownership**: First array should have `own=true` in unsafe_wrap
-4. **Size calculations**: Use `computesize` and `computesizedeep` for verification
+1.  **Data types**: Use `isbitstype( eltype( array ) )` to verify optimization applies
+2.  **Memory layout**: Use `pointer( array )` to verify contiguity
+3.  **Ownership**: Aligned arrays will have `own=false` (checked via `unsafe_wrap` inspection if possible, or usually hidden) but valid pointers.
+4.  **Layout Statistics**: Use `layoutstats(x)` and `deeplayoutstats(x)` to verify how much memory is being packed, block counts, and fragmentation. (Note: `computesize` is internal).
 
 ## Example Explanations
 
@@ -187,12 +200,14 @@ When users ask about specific features:
 - Use `layout` for simple structs, `deeplayout` for nested structures
 
 ### "Why did my program crash after alignment?"
-Most likely cause: Original aligned structure was garbage collected
-Solution: Keep a reference to the aligned structure alive
+- If using `livedangerously=true`, ensure no cyclic dependencies or dangerous aliasing.
+- If safe mode, crashes are rare but could happen if interacting with C code expecting specific memory ownership.
+- Ensure you are not manually `free`ing pointers.
 
 ### "Can I modify aligned arrays?"
-No, modifying (especially resizing) aligned arrays is unsafe and breaks guarantees
-Alternative: Create new aligned structure after modifications
+- You can modify **values** (`A[i] = x`) freely.
+- **Resizing** (`push!`, `resize!`) is discouraged as it breaks the memory contiguity optimization for that array.
+- Alternative: Create new aligned structure after resizing operations are complete.
 
 ## Version Compatibility
 - Requires Julia 1.6 or higher
