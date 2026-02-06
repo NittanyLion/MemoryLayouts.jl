@@ -136,3 +136,10 @@ There are several other Julia packages that address memory layout and array stor
 *   [Buffers.jl](https://github.com/fkfest/Buffers.jl): Manages buffer allocation/deallocation for multidimensional arrays.
 
 **MemoryLayouts.jl** differs by focusing specifically on physically aligning multiple independent arrays (which may be fields in a struct) into a single contiguous memory block to optimize cache usage, while using `unsafe_wrap` to present them as standard Julia arrays.
+
+---
+
+## 🤖 For AI Agents
+
+This package contains a dedicated guide for AI agents to help them understand and assist with `MemoryLayouts.jl`.
+See [Agents.md](Agents.md) for detailed instructions on architecture, safety, and best practices.
