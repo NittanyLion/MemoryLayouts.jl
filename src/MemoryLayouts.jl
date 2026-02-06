@@ -2,9 +2,10 @@ module MemoryLayouts
 using DataStructures, StyledStrings
 using ConstructionBase
 
-export layoutmem, deeplayoutmem
+export layout, deeplayout, layoutstats, deeplayoutstats
 
 include( "layout.jl" )
+include( "stats.jl" )
 
 function __init__()
     width = 80
@@ -16,24 +17,24 @@ function __init__()
         pad = width - 4 - s_len
         pad_l = div(pad, 2)
         pad_r = pad - pad_l
-        return styled"{(fg=0xFF5F00):**}" * (" " ^ pad_l) * str * (" " ^ pad_r) * styled"{(fg=0xFF5F00):**}"
+        return styled"{(fg=0x00FF00):**}" * (" " ^ pad_l) * str * (" " ^ pad_r) * styled"{(fg=0x00FF00):**}"
     end
 
-    println( styled"{(fg=0xFF5F00):$stars_h}" )
+    println( styled"\n{(fg=0x00FF00):$stars_h}" )
     println( line( styled"{bold,cyan:MemoryLayouts.jl} 🧠⚡" ) )
     println( line( styled"{italic:Optimize memory layout for maximum cache efficiency}" ) )
     println( line( "" ) )
     println( line( styled"{bold:Available Functions:}" ) )
-    println( line( styled"• {magenta:layoutmem( x )}" ) )
-    println( line( styled"• {magenta:deeplayoutmem( x )}" ) )
+    println( line( styled"• {magenta:layout( x )}" ) )
+    println( line( styled"• {magenta:deeplayout( x )}" ) )
     println( line( "" ) )
-    println( line( styled"{bold,yellow:Usage Note:}" ) )
+    println( line( styled"{bold,yellow:Usage Notes:}" ) )
     println( line( "Aligned arrays share a single contiguous memory block" ) )
-    println( line( styled"{italic:Resizing (e.g. push!) breaks contiguity}" ) )
+    println( line( styled"{italic:Please {red:read the docs for gotchas}}" ) )
     println( line( "" ) )
     println( line( styled"{bold:Performance Tip:}" ) )
     println( line( styled"Use {magenta:alignment = 64} for AVX-512 SIMD" ) )
-    println( styled"{(fg=0xFF5F00):$stars_h}" )
+    println( styled"{(fg=0x00FF00):$stars_h}\n" )
 end
 
 end

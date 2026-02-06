@@ -8,9 +8,8 @@ This document provides guidance for AI agents assisting users with the MemoryLay
 MemoryLayouts.jl is a Julia package that optimizes memory layout by ensuring that elements of collections (Arrays, Dicts, structs) are stored contiguously in memory. This reduces cache misses and improves performance, particularly for data structures with multiple array fields.
 
 ### Core Functions
-- **`layoutmem( x; exclude = [], alignment = 1 )`**: Aligns memory for immediate fields/elements of `x`. `alignment` specifies byte alignment (e.g., 64 for AVX-512).
-- **`deeplayoutmem( x; exclude = [], alignment = 1 )`**: Recursively aligns memory throughout the entire structure.
-- **`layoutmem!( D, keys... )`**: Internal function that performs in-place memory alignment for dictionary entries
+- **`layout( x; exclude = [], alignment = 1 )`**: Aligns memory for immediate fields/elements of `x`. `alignment` specifies byte alignment (e.g., 64 for AVX-512).
+- **`deeplayout( x; exclude = [], alignment = 1 )`**: Recursively aligns memory throughout the entire structure.
 
 ## Key Concepts for AI Agents
 
@@ -56,7 +55,7 @@ end
 
 # Solution
 data = SimData( rand( 1000 ), rand( 1000 ), rand( 1000 ) )
-aligneddata = layoutmem( data )  # Now arrays are contiguous
+aligneddata = layout( data )  # Now arrays are contiguous
 ```
 
 ### Scenario 2: Excluding Fields
@@ -70,7 +69,7 @@ end
 
 # Solution
 data = MixedData(...)
-aligned = layoutmem( data; exclude = [:metadata] )
+aligned = layout( data; exclude = [:metadata] )
 ```
 
 ### Scenario 3: Deep vs Shallow Alignment
@@ -81,10 +80,10 @@ struct NestedData
 end
 
 # Shallow alignment (only top level)
-shallow = layoutmem( data )
+shallow = layout( data )
 
 # Deep alignment (all levels)
-deep = deeplayoutmem( data )
+deep = deeplayout( data )
 ```
 
 ## Error Diagnosis Guide
@@ -112,7 +111,7 @@ deep = deeplayoutmem( data )
 2. **Use for read-heavy workloads** where data won't be modified
 3. **Apply to hot paths** in performance-critical code
 4. **Keep aligned structures alive** throughout their usage
-5. **Use `deeplayoutmem` for nested structures** when all levels need optimization
+5. **Use `deeplayout` for nested structures** when all levels need optimization
 
 ### Don't Recommend:
 1. **Don't use with growable collections** that need dynamic resizing
@@ -152,7 +151,7 @@ When generating code using MemoryLayouts.jl:
 ### Safe Pattern:
 ```julia
 function processaligneddata( originaldata )
-    aligned = layoutmem( originaldata )
+    aligned = layout( originaldata )
     # Keep aligned alive for entire computation
     result = computewithaligned( aligned )
     return result
@@ -162,7 +161,7 @@ end
 ### Unsafe Pattern (AVOID):
 ```julia
 function unsafeexample( data )
-    aligned = layoutmem( data )
+    aligned = layout( data )
     arr1 = aligned.array1  # Extracting reference
     arr2 = aligned.array2
     aligned = nothing      # DON'T DO THIS!
@@ -182,10 +181,10 @@ Help users debug by checking:
 
 When users ask about specific features:
 
-### "What's the difference between layoutmem and deeplayoutmem?"
-- `layoutmem`: Single-level alignment, like `copy`
-- `deeplayoutmem`: Recursive alignment, like `deepcopy`
-- Use `layoutmem` for simple structs, `deeplayoutmem` for nested structures
+### "What's the difference between layout and deeplayout?"
+- `layout`: Single-level alignment, like `copy`
+- `deeplayout`: Recursive alignment, like `deepcopy`
+- Use `layout` for simple structs, `deeplayout` for nested structures
 
 ### "Why did my program crash after alignment?"
 Most likely cause: Original aligned structure was garbage collected

@@ -7,9 +7,9 @@ struct S
 end
 
 @testset "MemoryLayouts.jl" begin
-    @testset "layoutmem struct" begin
+    @testset "layout struct" begin
         s = S(rand(10), rand(20))
-        s_aligned = layoutmem(s)
+        s_aligned = layout(s)
 
         @test s_aligned.a == s.a
         @test s_aligned.b == s.b
@@ -25,9 +25,9 @@ end
         # @test UInt(pointer(s.b)) != UInt(pointer(s.a)) + sizeof(s.a) 
     end
     
-    @testset "layoutmem dict" begin
+    @testset "layout dict" begin
         d = Dict(:a => rand(10), :b => rand(20))
-        d_aligned = layoutmem(d)
+        d_aligned = layout(d)
         
         @test d_aligned[:a] == d[:a]
         @test d_aligned[:b] == d[:b]
@@ -40,14 +40,14 @@ end
         @test diff == sizeof(d_aligned[:a]) || diff == sizeof(d_aligned[:b])
     end
 
-    @testset "deeplayoutmem" begin
+    @testset "deeplayout" begin
         struct DeepS
             x::S
             y::Vector{Int}
         end
         
         ds = DeepS(S(rand(5), rand(5)), rand(Int, 5))
-        ds_aligned = deeplayoutmem(ds)
+        ds_aligned = deeplayout(ds)
         
         @test ds_aligned.x.a == ds.x.a
         @test ds_aligned.y == ds.y
@@ -61,6 +61,24 @@ end
         @test UInt(p_xb) == UInt(p_xa) + sizeof(ds_aligned.x.a)
         @test UInt(p_y) == UInt(p_xb) + sizeof(ds_aligned.x.b)
     end
+    
+    @testset "deeplayout dict" begin
+        # Nested dict
+        d = Dict(:a => Dict(:x => rand(10)), :b => rand(20))
+        d_aligned = deeplayout(d)
+        
+        @test d_aligned[:a][:x] == d[:a][:x]
+        @test d_aligned[:b] == d[:b]
+        
+        # Check that d_aligned[:a][:x] and d_aligned[:b] are contiguous
+        p_ax = pointer(d_aligned[:a][:x])
+        p_b = pointer(d_aligned[:b])
+        
+        diff = abs(Int(p_b) - Int(p_ax))
+        # One follows the other. The order is not guaranteed by Dict iteration, 
+        # but they should be packed together.
+        @test diff == sizeof(d_aligned[:a][:x]) || diff == sizeof(d_aligned[:b])
+    end
 
     @testset "alignment option" begin
         s = S(rand(10), rand(20)) # 80 bytes and 160 bytes. Both multiples of 8.
@@ -68,7 +86,7 @@ end
         # 80 is not multiple of 64 (64 + 16).
         # So padding of 48 bytes needed? (80 + 48 = 128 = 2*64).
         
-        s_aligned = layoutmem(s, alignment=64)
+        s_aligned = layout(s, alignment=64)
         
         pa = pointer(s_aligned.a)
         pb = pointer(s_aligned.b)

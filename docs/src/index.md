@@ -16,44 +16,18 @@ Standard collections in Julia (`Dicts`, `Arrays` of `Arrays`, `structs`) often s
 
 | Function | Description | Analogy |
 | :--- | :--- | :--- |
-| **`layoutmem( x )`** | Aligns immediate fields of `x` | Like `copy( x )` but packed |
-| **`deeplayoutmem( x )`** | Recursively aligns nested structures | Like `deepcopy( x )` but packed |
+| **`layout( x )`** | Aligns immediate fields of `x` | Like `copy( x )` but packed |
+| **`deeplayout( x )`** | Recursively aligns nested structures | Like `deepcopy( x )` but packed |
+| **`layoutstats( x )`** | Dry run statistics for `layout( x )` | |
+| **`deeplayoutstats( x )`** | Dry run statistics for `deeplayout( x )` | |
 
-## Usage
+## 🛠️ Usage
 
-The package provides two exported functions: `layoutmem` and `deeplayoutmem`. The distinction is that `layoutmem` only applies to top level objects, whereas `deeplayoutmem` applies to objects at all levels. The two examples below demonstrate their use.
+The package provides four exported functions: `layout`, `deeplayout`, `layoutstats` and `deeplayoutstats`. The distinction between the first two functions is that `layout` only applies to top level objects, whereas `deeplayout` applies to objects at all levels. The two examples below demonstrate their use.  As for the `stats` functions, these just do a dry run and print out some statistics on the degree of contiguity improvement a user can expect to see.
 
-## SIMD Alignment
+### 💡 Example for `layout`
 
-Both `layoutmem` and `deeplayoutmem` accept an optional `alignment` keyword argument (default `1`). This allows you to specify the byte alignment for the start of each array in the contiguous memory block.
-
-Proper memory alignment is crucial for maximizing performance with SIMD (Single Instruction, Multiple Data) instructions (e.g., AVX2, AVX-512).
-
-*   **AVX2** typically requires 32-byte alignment.
-*   **AVX-512** typically requires 64-byte alignment.
-
-### Example
-
-```julia
-using MemoryLayouts
-struct MyData
-    a::Vector{Float64}
-    b::Vector{Float64}
-end
-
-data = MyData( rand( 100 ), rand( 100 ) )
-
-# Align for AVX-512 (64-byte alignment)
-aligneddata = layoutmem( data; alignment = 64 )
-
-# Verify alignment
-pointer( aligneddata.a ) # Will be a multiple of 64
-pointer( aligneddata.b ) # Will be a multiple of 64
-```
-
-### Example for `layoutmem`
-
-The example below demonstrates how to use `layoutmem`.
+The example below demonstrates how to use `layout`.
 
 ```@example
 using MemoryLayouts, BenchmarkTools, StyledStrings
@@ -77,13 +51,13 @@ function computeme( X )
 end
 
 print( styled"{(fg=0xff9999):original}: " ); @btime computeme( X ) setup=(X = original();)
-print( styled"{(fg=0x99ff99):layoutmem}: " ); @btime computeme( X ) setup=(X = layoutmem( original());)
+print( styled"{(fg=0x99ff99):layout}: " ); @btime computeme( X ) setup=(X = layout( original());)
 ;
 ```
 
-### Example for `deeplayoutmem`
+### 💡 Example for `deeplayout`
 
-The example below illustrates the use of `deeplayoutmem`.
+The example below illustrates the use of `deeplayout`.
 
 ```@example
 using MemoryLayouts, BenchmarkTools, StyledStrings
@@ -120,26 +94,107 @@ function computeme( X )
     return Σ
 end
 
+println( layoutstats( original() ) )
+println( deeplayoutstats( original() ) )
+
+
 print( styled"{(fg=0xff9999):original}: " ); @btime computeme( X ) setup=(X = original();)
-print( styled"{(fg=0x99ff99):layoutmem}: " ); @btime computeme( X ) setup=(X = layoutmem( original());)
-print( styled"{(fg=0x9999ff):deeplayoutmem}: " ); @btime computeme( X ) setup=(X = deeplayoutmem( original());)
+print( styled"{(fg=0x99ff99):layout}: " ); @btime computeme( X ) setup=(X = layout( original());)
+print( styled"{(fg=0x9999ff):deeplayout}: " ); @btime computeme( X ) setup=(X = deeplayout( original());)
 ;
 ```
 
-## 🔌 Compatibility & Extensions
+## 📊 Dry Run / Statistics
 
-* `MemoryLayouts.jl` is further compatible with 
+You can inspect the potential improvements in memory contiguity without performing the actual allocation using `layoutstats` and `deeplayoutstats`.
+
+```julia
+julia> using MemoryLayouts
+
+julia> data = [rand(10) for _ in 1:5];
+
+julia> layoutstats(data)
+LayoutStats(packed=400 b, blocks=5, span=2 kb, reduction=2 kb (82.6%))
+  Level 1: bytes=400 b, blocks=5, span=2 kb, reduction=2 kb (82.6%)
+```
+
+The output indicates:
+- **packed**: The total size (in bytes) of the data if packed.
+- **blocks**: The number of individual arrays identified.
+- **span**: The current distance between the minimum and maximum memory addresses of the data.
+- **reduction**: The potential reduction in memory span.
+
+## 🤝 Compatibility
+
+
+* `MemoryLayouts.jl` is compatible with 
   - [`AxisKeys`](https://github.com/mcabbott/AxisKeys.jl)
   - [`InlineStrings`](https://github.com/JuliaStrings/InlineStrings.jl)
-  - [`NamedDimsArrays`](https://github.com/invenia/NamedDims.jl) 
+  - [`NamedDims.jl`](https://github.com/invenia/NamedDims.jl) 
   - [`OffsetArrays`](https://github.com/JuliaArrays/OffsetArrays.jl)
-* this assumes that those packages are loaded by the user
+* this assumes that those packages are loaded by the user (weak dependences)
 
-## Function documentation
+
+
+
+
+## ⚡ SIMD Alignment
+
+Both `layout` and `deeplayout` accept an optional `alignment` keyword argument (default `1`). This allows you to specify the byte alignment for the start of each array in the contiguous memory block.
+
+Proper memory alignment is relevant for maximizing performance with SIMD (Single Instruction, Multiple Data) instructions (e.g., AVX2, AVX-512). On the other hand, such alignment leaves gaps between blocks of memory that are not a multiple of 64 bytes in length.
+
+*   **AVX2** typically requires 32-byte alignment.
+*   **AVX-512** typically requires 64-byte alignment.
+
+### 💡 Example
+
+```julia
+using MemoryLayouts
+struct MyData
+    a::Vector{Float64}
+    b::Vector{Float64}
+end
+
+data = MyData( rand( 100 ), rand( 100 ) )
+
+aligneddata = layout( data; alignment = 64 )
+
+pointer( aligneddata.a ) # Will be a multiple of 64
+pointer( aligneddata.b ) # Will be a multiple of 64
+```
+
+## ⚠️ Things to be mindful of
+
+!!! warning "Important details"
+    - it operates on various types of collections including `structs`, `arrays`, and `dicts`
+        * `operating on` means that these collections are traversed, possibly recursively
+    - the only objects that are copied into contiguous memory are `isbits` `arrays` (think arrays of numbers, InlineStrings (but **not** regular strings), etcetera )
+    - the more scattered is the memory before the layout change, the greater is the potential speed gain
+    - `layout` copies, but only the top level; see example 2 above
+        * `deeplayout` copies all levels
+        * no attempt is made to make empty arrays contiguous
+        * no attempt is made to make objects that are not one of the covered collections contiguous
+        * the package assigns one memory block and within that block uses `unsafe_wraps` to obtain Julia arrays
+            - this *can* have 'interesting' consequences
+            - ergo, this package should not be used by those new to programming 
+        * objects can be excluded from layout changes via the `exclude` keyword
+    - there is overhead in laying out memory initially and (to a much lesser extent) to running the finalizer
+    - thus, `MemoryLayouts` works best for aligning memory in a collection once and then using it for an extended stretch
+    - resizing one of the arrays whose memory was laid out by `MemoryLayouts` is safe, but likely results in that array being moved to another location in memory **assigned by Julia** (not by `MemoryLayouts`)
+    - reassigning an array assigned by `MemoryLayouts` to another location, e.g. by writing `y[i] = ...` does not release the entire memory block
+    - the entire memory block is only released if the entire collection loses scope
+    - by default, `MemoryLayouts` packs in the isbits arrays as tightly as it can
+        * this may not be optimal, e.g. for AVX-512 computations
+        * use the `alignment=64` option to give up some contiguity and regain alignment desired for optimal AVX-512 performance
+
+## 📖 Function documentation
 
 ```@docs
-layoutmem
-deeplayoutmem
+layout
+deeplayout
+layoutstats
+deeplayoutstats
 ```
 
 

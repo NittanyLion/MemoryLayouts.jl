@@ -19,7 +19,11 @@ function computeme( X )
     return Σ
 end
 
+X = original()
+@info "layout statistics:" deeplayoutstats( X )
+
+
 print( styled"{red:original}: " ); @btime computeme( X ) setup=(X = original())
-print( styled"{green:layoutmem}: " ); @btime computeme( X ) setup=(X = layoutmem( original()))
-print( styled"{blue:layoutmem with 16 byte alignment}: " ); @btime computeme( X ) setup=(X = layoutmem( original(); alignment = 16 ) )
+print( styled"{green:layout}: " ); @btime computeme( X ) setup=(X = layout( original()))
+print( styled"{blue:layout with 16 byte alignment}: " ); @btime computeme( X ) setup=(X = layout( original(); alignment = 16 ) )
 print( styled"{blue:layoutmem with 64 byte alignment}: " ); @btime computeme( X ) setup=(X = layoutmem( original(); alignment = 64 ) )

@@ -30,7 +30,8 @@ function computeme!( ac )
 end
 
 # N chosen so that N * 8 is not divisible by 64 (cache line)
-N = 10_007
+N = 10_003
+println( deeplayoutstats( original( N ) ) ) 
 
 println( styled"{bold:Demonstrating MemoryLayouts Performance (N=$N)}\n" )
 
@@ -40,20 +41,20 @@ print( styled"{red:Standard}:   " )
 bstd = @benchmark computeme!( datastd ) setup=(datastd = original( N ))
 display( bstd )
 
-println( styled"\n{yellow:2. Contiguous (layoutmem 1)}" )
-println( styled"{dim:   Packed withouut padding.}" )
-print( styled"{green:layoutmem(1)}: " )
+println( styled"\n{yellow:2. Contiguous (layout 1)}" )
+println( styled"{dim:   Packed without padding.}" )
+print( styled"{green:layout(1)}: " )
 
-baligned1 = @benchmark computeme!( dataaligned ) setup=( dataaligned = deeplayoutmem( original( N ); alignment = 1 ) )
+baligned1 = @benchmark computeme!( dataaligned ) setup=( dataaligned = layout( original( N ); alignment = 1 ) )
 display( baligned1 )
 
 
-println( styled"\n{yellow:3. Contiguous and Aligned (layoutmem 64)}" )
+println( styled"\n{yellow:3. Contiguous and Aligned (layout 64)}" )
 println( styled"{dim:   Packed with padding to ensure 64-byte alignment for all arrays.}" )
 println( styled"{dim:   Safe for AVX-512 SIMD operations.}" )
-print( styled"{green:layoutmem(64)}: " )
-# dataaligned = deeplayoutmem( original( N ); alignment = 64 )
-baligned64 = @benchmark computeme!( dataaligned ) setup=( dataaligned = deeplayoutmem( original( N ); alignment = 64 ) )
+print( styled"{green:layout(64)}: " )
+# dataaligned = deeplayout( original( N ); alignment = 64 )
+baligned64 = @benchmark computeme!( dataaligned ) setup=( dataaligned = layout( original( N ); alignment = 64 ) )
 display( baligned64 )
 
 
@@ -63,7 +64,7 @@ taligned = median( baligned64 ).time
 diffaligned = ( tstd - taligned ) / tstd * 100
 
 println( "\n" * "="^60 )
-println( styled"Speedup from layoutmem(64): {bold,green:$(round(diffaligned, digits=1))%}" )
+println( styled"Speedup from layout(64): {bold,green:$(round(diffaligned, digits=1))%}" )
 println( "="^60 )
 
 println( styled"\n{bold:Generating plot...}" )
@@ -74,4 +75,6 @@ timesaligned64 = baligned64.times ./ 1000
 p = histogram( timesstd; label = "Standard", alpha = 0.5, xlabel = "Time (μs)", ylabel = "Frequency", title = "Benchmark Comparison" )
 histogram!( p, timesaligned1; label = "Aligned (1)", alpha = 0.5 )
 histogram!( p, timesaligned64; label = "Aligned (64)", alpha = 0.5 )
-display( p )
+# display( p )
+savefig( p, "benchmark_results.svg" )
+println( styled"\n{bold,cyan:Plot saved to benchmark_results.svg}" )

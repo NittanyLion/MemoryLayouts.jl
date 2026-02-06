@@ -32,6 +32,9 @@ function computeme( X )
     return Σ
 end
 
-print( styled"{red:original}: " ); @btime computeme( X ) setup=(X = original())
-print( styled"{green:layoutmem}: " ); @btime computeme( X ) setup=(X = layoutmem( original()))
-print( styled"{blue:deeplayoutmem}: " ); @btime computeme( X ) setup=(X = deeplayoutmem( original()))
+println( layoutstats( original() ) )
+println( deeplayoutstats( original() ) )
+
+print( styled"{red  :original     }: " ); @btime computeme( X ) setup=(X = original())
+print( styled"{green:layout       }: " ); @btime computeme( X ) setup=(X = layout( original()))
+print( styled"{blue :deeplayout   }: " ); @btime computeme( X ) setup=(X = deeplayout( original()))

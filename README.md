@@ -22,8 +22,10 @@ The advantage of contiguity is that it reduces cache misses and should be expect
 
 | Function | Description | Analogy |
 | :--- | :--- | :--- |
-| **`layoutmem( x )`** | Aligns immediate fields of `x` | Like `copy( x )` but packed |
-| **`deeplayoutmem( x )`** | Recursively aligns nested structures | Like `deepcopy( x )` but packed |
+| **`layout( x )`** | Aligns immediate fields of `x` | Like `copy( x )` but packed |
+| **`deeplayout( x )`** | Recursively aligns nested structures | Like `deepcopy( x )` but packed |
+| **`layoutstats( x )`** | Dry run statistics for `layout( x )` | |
+| **`deeplayoutstats( x )`** | Dry run statistics for `deeplayout( x )` | |
 
 ### 🚀 SIMD Optimization
 
@@ -31,8 +33,7 @@ Both functions accept an optional `alignment` keyword argument (default `1`).
 This allows aligning data to specific byte boundaries (e.g., 32 or 64 bytes), which is relevant for maximizing performance with **SIMD** instructions (AVX2, AVX-512).
 
 ```julia
-# Align for AVX-512 (64-byte alignment)
-aligneddata = layoutmem( data; alignment = 64 )
+aligneddata = layout( data; alignment = 64 )
 ```
 
 ---
@@ -43,7 +44,7 @@ In scientific computing, memory locality is everything.
 
 > **Benchmark Result:**
 > `original`: 159.177 μs
-> `layoutmem`: **111.251 μs** (🚀 43% Faster)
+> `layout`: **111.251 μs** (🚀 43% Faster)
 
 <details>
 <summary><b>Click to see the benchmark code</b></summary>
@@ -70,7 +71,7 @@ function computeme( X )
 end
 
 print( styled"{red:original}: " ); @btime computeme( X ) setup=(X = original())
-print( styled"{green:layoutmem}: " ); @btime computeme( X ) setup=(X = layoutmem( original()))
+print( styled"{green:layout}: " ); @btime computeme( X ) setup=(X = layout( original()))
 ```
 </details>
 
@@ -78,12 +79,33 @@ print( styled"{green:layoutmem}: " ); @btime computeme( X ) setup=(X = layoutmem
 
 ---
 
-## ⚠️ Usage Note
+## 📊 Dry Run / Statistics
+
+You can inspect the potential improvements in memory contiguity without performing the actual allocation using `layoutstats` and `deeplayoutstats`.
+
+```julia
+julia> using MemoryLayouts
+
+julia> data = [rand(10) for _ in 1:5];
+
+julia> layoutstats(data)
+LayoutStats(packed=400, blocks=5, span=2304, reduction=1904 (82.6%))
+```
+
+The output indicates:
+- **packed**: The total size (in bytes) of the data if packed.
+- **blocks**: The number of individual arrays identified.
+- **span**: The current distance between the minimum and maximum memory addresses of the data.
+- **reduction**: The potential reduction in memory span.
+
+---
+
+## ⚠️ Usage Notes
 
 > [!IMPORTANT]
-> **Memory Contiguity**
-> 1. Aligned arrays share a single contiguous memory block.
-> 2. **Resizing** aligned arrays (`push!`, `append!`) will cause them to be reallocated elsewhere, meaning that such arrays will no longer be contiguous with the rest of the memory block.
+> 1. Use the statistics to evaluate whether packing is worth it.
+> 2. There are some issues to pay attention to: please read the documentation carefully.
+> 3. This is the first version of this package: comments are welcome.
 
 ---
 
@@ -92,7 +114,7 @@ print( styled"{green:layoutmem}: " ); @btime computeme( X ) setup=(X = layoutmem
 `MemoryLayouts` is further compatible with:
 * 🔑 [`AxisKeys`](https://github.com/mcabbott/AxisKeys.jl)
 * 📝 [`InlineStrings`](https://github.com/JuliaStrings/InlineStrings.jl)
-* 🏷️ [`NamedDimsArrays`](https://github.com/invenia/NamedDims.jl) 
+* 🏷️ [`NamedDims.jl`](https://github.com/invenia/NamedDims.jl) 
 * 📏 [`OffsetArrays`](https://github.com/JuliaArrays/OffsetArrays.jl)
 
 (Assumes these packages are loaded by the user)
