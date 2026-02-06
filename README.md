@@ -27,6 +27,7 @@ The advantage of contiguity is that it reduces cache misses and should be expect
 | :--- | :--- | :--- |
 | **`layout( x )`** | Aligns immediate fields of `x` | Like `copy( x )` but packed |
 | **`deeplayout( x )`** | Recursively aligns nested structures | Like `deepcopy( x )` but packed |
+| **`layout!( x )`** | In-place alignment (e.g. for Dicts) | Like `layout( x )` but in-place |
 | **`layoutstats( x )`** | Dry run statistics for `layout( x )` | |
 | **`deeplayoutstats( x )`** | Dry run statistics for `deeplayout( x )` | |
 

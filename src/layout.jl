@@ -151,6 +151,24 @@ function layout( s :: T; exclude = Symbol[], alignment :: Int = 1, livedangerous
 end
 
 
+"""
+    layout!( s :: AbstractDict; exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false )
+
+In-place version of `layout` for `AbstractDict`.
+
+`layout!` modifies `s` such that its values are stored contiguously in memory.
+
+The `alignment` keyword argument specifies the memory alignment in bytes. This is particularly useful for SIMD operations, where aligning data to 16, 32, or 64 bytes can improve performance.
+
+The `livedangerously` keyword argument (default `false`) disables safety checks for:
+- Cyclic dependencies (prevents StackOverflow)
+- Shared references / aliasing (prevents silent duplication)
+Enable this only if you are certain your data is acyclic and you accept duplication of shared arrays.
+
+Excluded items are preserved as-is (or deep-copied in some contexts) but not packed into the contiguous memory block.
+
+$importantadmonition
+"""
 function layout!( s :: AbstractDict; exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false )
     keysalign = filter( k -> k ∉ exclude, keys(s) )
     totalsize = sum( k -> computesize( s[k]; alignment = alignment ), keysalign )

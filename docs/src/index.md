@@ -18,6 +18,7 @@ Standard collections in Julia (`Dicts`, `Arrays` of `Arrays`, `structs`) often s
 | :--- | :--- | :--- |
 | **`layout( x )`** | Aligns immediate fields of `x` | Like `copy( x )` but packed |
 | **`deeplayout( x )`** | Recursively aligns nested structures | Like `deepcopy( x )` but packed |
+| **`layout!( x )`** | In-place alignment (e.g. for Dicts) | Like `layout( x )` but in-place |
 | **`layoutstats( x )`** | Dry run statistics for `layout( x )` | |
 | **`deeplayoutstats( x )`** | Dry run statistics for `deeplayout( x )` | |
 
@@ -181,7 +182,7 @@ fast_result = deeplayout( huge_tree; livedangerously = true )
 
 !!! warning "Important details"
     - it operates on various types of collections including `structs`, `arrays`, and `dicts`
-        * `operating on` means that these collections are traversed, possibly recursively
+        * *operating on* means that these collections are traversed, possibly recursively
     - the only objects that are copied into contiguous memory are `isbits` `arrays` (think arrays of numbers, InlineStrings (but **not** regular strings), etcetera )
     - the more scattered is the memory before the layout change, the greater is the potential speed gain
     - `layout` copies, but only the top level; see example 2 above
@@ -200,12 +201,17 @@ fast_result = deeplayout( huge_tree; livedangerously = true )
     - by default, `MemoryLayouts` packs in the isbits arrays as tightly as it can
         * this may not be optimal, e.g. for AVX-512 computations
         * use the `alignment=64` option to give up some contiguity and regain alignment desired for optimal AVX-512 performance
+    - the code has a number of safety checks and features:
+        * it throws an error on detecting cyclic content (a depends on b depends on a) 
+        * it warns for aliasing
+        * alignment used is the maximum of user-specified alignment and machine-required alignment for the type
 
 ## 📖 Function documentation
 
 ```@docs
 layout
 deeplayout
+layout!
 layoutstats
 deeplayoutstats
 ```
