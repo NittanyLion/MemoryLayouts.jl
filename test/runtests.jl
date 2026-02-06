@@ -7,8 +7,8 @@ using Aqua
 end
 
 struct S
-    a::Vector{Float64}
-    b::Vector{Float64}
+    a :: Vector{Float64}
+    b :: Vector{Float64}
 end
 
 @testset "MemoryLayouts.jl" begin
@@ -47,8 +47,8 @@ end
 
     @testset "deeplayout" begin
         struct DeepS
-            x::S
-            y::Vector{Int}
+            x :: S
+            y :: Vector{Int}
         end
         
         ds = DeepS(S(rand(5), rand(5)), rand(Int, 5))
@@ -91,7 +91,7 @@ end
         # 80 is not multiple of 64 (64 + 16).
         # So padding of 48 bytes needed? (80 + 48 = 128 = 2*64).
         
-        s_aligned = layout(s, alignment=64)
+        s_aligned = layout(s, alignment = 64)
         
         pa = pointer(s_aligned.a)
         pb = pointer(s_aligned.b)

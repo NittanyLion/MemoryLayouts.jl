@@ -4,7 +4,7 @@ alignup( x, a ) = cld( x, a ) * a
 
 
 computesize( :: Any; kwargs... ) = 0
-computesize( x :: AbstractArray; alignment::Int=1 ) = isbitstype( eltype( x ) ) ? alignup( sizeof( eltype( x ) ) * length( x ), alignment ) : 0
+computesize( x :: AbstractArray; alignment :: Int = 1 ) = isbitstype( eltype( x ) ) ? alignup( sizeof( eltype( x ) ) * length( x ), alignment ) : 0
 
 
 const importantadmonition = """
@@ -29,7 +29,7 @@ Function *for internal use only* that creates a new array wrapper of the same ty
 - `OffsetArray`: preserves offsets
 - `NamedDimsArray`: preserves dimension names
 """
-newarrayofsametype( ::Any, newdata ) = newdata
+newarrayofsametype( :: Any, newdata ) = newdata
 
 
 
@@ -64,7 +64,7 @@ transferadvance( x, ■ :: Vector{UInt8}, offset :: Ref{Int}, alignment :: Int )
 
 
 """
-    layout(s; exclude = Symbol[], alignment::Int=1)
+    layout(s; exclude = Symbol[], alignment :: Int = 1)
 
 `layout` aligns the memory of arrays within the object `s`, whose type should be one of `struct`, `AbstractArray`, or `AbstractDict`
 
@@ -107,9 +107,9 @@ function layout( s :: T; exclude = Symbol[], alignment :: Int = 1 ) where T
 end
 
 
-function layout!( s :: AbstractDict; exclude = Symbol[], alignment::Int=1 )
+function layout!( s :: AbstractDict; exclude = Symbol[], alignment :: Int = 1 )
     keysalign = filter( k -> k ∉ exclude, keys(s) )
-    totalsize = sum( k -> computesize( s[k]; alignment=alignment ), keysalign )
+    totalsize = sum( k -> computesize( s[k]; alignment = alignment ), keysalign )
     ■ = Vector{UInt8}( undef, totalsize + alignment )
     ▶raw = pointer( ■ )
     ▶aligned = reinterpret( Ptr{Cvoid}, alignup( UInt( ▶raw ), alignment ) )
@@ -119,16 +119,16 @@ function layout!( s :: AbstractDict; exclude = Symbol[], alignment::Int=1 )
     return s
 end
 
-layout( s :: AbstractDict; exclude = Symbol[], alignment::Int=1 ) = layout!( copy( s ); exclude = exclude, alignment = alignment )
+layout( s :: AbstractDict; exclude = Symbol[], alignment :: Int = 1 ) = layout!( copy( s ); exclude = exclude, alignment = alignment )
 
 
 
 computesizedeep( x :: AbstractArray; exclude = Symbol[], alignment :: Int = 1 ) = isbitstype( eltype( x ) ) ? alignup( sizeof( eltype( x ) ) * length( x ), alignment ) : sum( el -> computesizedeep( el; exclude = exclude, alignment = alignment ), x )
-computesizedeep( x :: AbstractDict; exclude = Symbol[], alignment :: Int = 1 ) = sum( k ∈ exclude ? 0 : computesizedeep( x[k]; exclude=exclude, alignment=alignment ) for k ∈ keys(x); init=0 )
-computesizedeep( x :: T; exclude = Symbol[], alignment::Int=1 ) where T = isbitstype( T ) || !isstructtype( T ) ?  0 :  sum( k ∈ exclude ? 0 : computesizedeep( getfield( x, k ); exclude=exclude, alignment=alignment ) for k ∈ fieldnames( T ) )
+computesizedeep( x :: AbstractDict; exclude = Symbol[], alignment :: Int = 1 ) = sum( k ∈ exclude ? 0 : computesizedeep( x[k]; exclude = exclude, alignment = alignment ) for k ∈ keys(x); init=0 )
+computesizedeep( x :: T; exclude = Symbol[], alignment :: Int = 1 ) where T = isbitstype( T ) || !isstructtype( T ) ?  0 :  sum( k ∈ exclude ? 0 : computesizedeep( getfield( x, k ); exclude = exclude, alignment = alignment ) for k ∈ fieldnames( T ) )
 
 
-function deeptransfer( x :: AbstractArray{T}, ■ :: Vector{UInt8}, offset :: Ref{Int}; exclude = Symbol[], alignment::Int=1 ) where T
+function deeptransfer( x :: AbstractArray{T}, ■ :: Vector{UInt8}, offset :: Ref{Int}; exclude = Symbol[], alignment :: Int = 1 ) where T
     isbitstype( T ) || return map( el -> deeptransfer( el, ■, offset; exclude = exclude, alignment = alignment ), x )
     sz = sizeof( T ) * length( x )
     sz == 0 && return x
@@ -143,15 +143,15 @@ end
 
 function deeptransfer( x :: AbstractDict, ■ :: Vector{UInt8}, offset :: Ref{Int}; exclude = Symbol[], alignment :: Int = 1 )
     D = copy( x )
-    foreach( k -> D[k] = deeptransfer( D[k], ■, offset; exclude=exclude, alignment=alignment ), filter( k -> k ∉ exclude, keys(D) ) )
+    foreach( k -> D[k] = deeptransfer( D[k], ■, offset; exclude = exclude, alignment = alignment ), filter( k -> k ∉ exclude, keys(D) ) )
     return D
 end
 
 deeptransfer( x :: T, ■ :: Vector{UInt8}, offset :: Ref{Int}; exclude = Symbol[], alignment :: Int = 1 ) where T =
-    isbitstype( T ) || !isstructtype( T ) ? x : constructorof(T)( ( k ∈ exclude ? deepcopy( getfield( x, k ) ) : deeptransfer( getfield( x, k ), ■, offset; exclude=exclude, alignment=alignment ) for k ∈ fieldnames( T ) )... ) 
+    isbitstype( T ) || !isstructtype( T ) ? x : constructorof(T)( ( k ∈ exclude ? deepcopy( getfield( x, k ) ) : deeptransfer( getfield( x, k ), ■, offset; exclude = exclude, alignment = alignment ) for k ∈ fieldnames( T ) )... )
 
 """
-    deeplayout( x; exclude = Symbol[], alignment::Int=1 ) 
+    deeplayout( x; exclude = Symbol[], alignment :: Int = 1 )
 
 `deeplayout` recursively aligns memory of arrays within `x` and its fields
 
@@ -163,8 +163,8 @@ Excluded items are preserved as-is (or deep-copied in some contexts) but not pac
 
 $importantadmonition
 """
-function deeplayout( x; exclude = Symbol[], alignment::Int=1 )
-    sz = computesizedeep( x; exclude = exclude, alignment=alignment )
+function deeplayout( x; exclude = Symbol[], alignment :: Int = 1 )
+    sz = computesizedeep( x; exclude = exclude, alignment = alignment )
     sz == 0 && return deepcopy( x )
     ■ = Vector{UInt8}( undef, sz + alignment )
     
@@ -173,7 +173,7 @@ function deeplayout( x; exclude = Symbol[], alignment::Int=1 )
     startoffset = Int( ▶aligned - ▶raw )
     offset = Ref( startoffset )
     
-    return deeptransfer( x, ■, offset; exclude = exclude, alignment=alignment )
+    return deeptransfer( x, ■, offset; exclude = exclude, alignment = alignment )
 end
 
 
