@@ -1,9 +1,14 @@
 using MemoryLayouts
 using Test
 using Aqua
+using JET
 
 @testset "Aqua" begin
     Aqua.test_all(MemoryLayouts)
+end
+
+@testset "JET" begin
+    JET.test_package(MemoryLayouts; target_modules=(MemoryLayouts,))
 end
 
 struct S
