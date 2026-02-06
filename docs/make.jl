@@ -1,8 +1,3 @@
-using Pkg
-Pkg.activate(@__DIR__)
-Pkg.develop(PackageSpec(path=joinpath(@__DIR__, "..")))
-Pkg.instantiate()
-
 using MemoryLayouts
 using Documenter
 
@@ -12,15 +7,15 @@ makedocs(;
     modules=[MemoryLayouts],
     authors="Joris Pinkse <pinkse@gmail.com> and contributors",
     sitename="MemoryLayouts.jl",
-    warnonly=true,
     format=Documenter.HTML(;
         canonical="https://NittanyLion.github.io/MemoryLayouts.jl",
         edit_link="main",
-        assets=["assets/custom.css"],
+        assets=String[],
     ),
     pages=[
         "Home" => "index.md",
     ],
+    warnonly=true,
 )
 
 deploydocs(;

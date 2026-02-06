@@ -50,8 +50,8 @@ function computeme( X )
     return Σ
 end
 
-print( styled"{(fg=0xff9999):original}: " ); @btime computeme( X ) setup=(X = original();)
-print( styled"{(fg=0x99ff99):layout}: " ); @btime computeme( X ) setup=(X = layout( original());)
+print( styled"{(fg=0xff9999):original}: " ); @btime computeme( X ) setup=(X = original(););
+print( styled"{(fg=0x99ff99):layout}: " ); @btime computeme( X ) setup=(X = layout( original()););
 ;
 ```
 
@@ -98,9 +98,9 @@ println( layoutstats( original() ) )
 println( deeplayoutstats( original() ) )
 
 
-print( styled"{(fg=0xff9999):original}: " ); @btime computeme( X ) setup=(X = original();)
-print( styled"{(fg=0x99ff99):layout}: " ); @btime computeme( X ) setup=(X = layout( original());)
-print( styled"{(fg=0x9999ff):deeplayout}: " ); @btime computeme( X ) setup=(X = deeplayout( original());)
+print( styled"{(fg=0xff9999):original}: " ); @btime computeme( X ) setup=(X = original(););
+print( styled"{(fg=0x99ff99):layout}: " ); @btime computeme( X ) setup=(X = layout( original()););
+print( styled"{(fg=0x9999ff):deeplayout}: " ); @btime computeme( X ) setup=(X = deeplayout( original()););
 ;
 ```
 
@@ -176,7 +176,7 @@ pointer( aligneddata.b ) # Will be a multiple of 64
         * no attempt is made to make empty arrays contiguous
         * no attempt is made to make objects that are not one of the covered collections contiguous
         * the package assigns one memory block and within that block uses `unsafe_wraps` to obtain Julia arrays
-            - this *can* have 'interesting' consequences
+            - this *can* have 'interesting' consequences if misused
             - ergo, this package should not be used by those new to programming 
         * objects can be excluded from layout changes via the `exclude` keyword
     - there is overhead in laying out memory initially and (to a much lesser extent) to running the finalizer
