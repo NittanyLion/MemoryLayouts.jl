@@ -1,9 +1,9 @@
 name = "MemoryLayouts"
 uuid = "109d70c3-7bcd-434b-a7d9-3642108a1280"
+keywords = ["memory-layout", "cache-optimization", "performance", "simd", "contiguous-memory"]
 version = "0.1.1-DEV"
 authors = ["Joris Pinkse <pinkse@gmail.com> and contributors"]
 description = "Optimize your memory layout for maximum cache efficiency by making struct fields contiguous."
-keywords = ["memory-layout", "cache-optimization", "performance", "simd", "contiguous-memory"]
 
 [deps]
 ConstructionBase = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
@@ -31,7 +31,7 @@ InlineStrings = "1.4.5"
 JET = "0.11"
 NamedDims = "1.2"
 OffsetArrays = "1.17"
-StyledStrings = "1.11.0"
+StyledStrings = "1.11.0, 1"
 Test = "1"
 julia = "1.12"
 
