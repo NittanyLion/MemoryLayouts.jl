@@ -243,6 +243,8 @@ function deeptransfer( x :: AbstractDict, ■ :: Vector{UInt8}, offset :: Ref{In
     end
 end
 
+deeptransfer( x :: Union{String, Symbol}, ■ :: Vector{UInt8}, offset :: Ref{Int}; kwargs... ) = x
+
 function deeptransfer( x :: T, ■ :: Vector{UInt8}, offset :: Ref{Int}; stack = Vector{Any}(), visited = IdSet{Any}(), exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false ) where T
     ( isbitstype( T ) || !isstructtype( T ) ) && return x
     pushed = !livedangerously && checkcycle( x, stack )
