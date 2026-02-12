@@ -30,6 +30,8 @@ The advantage of contiguity is that it reduces cache misses and should be expect
 | **`layout!( x )`** | In-place alignment (e.g. for Dicts) | Like `layout( x )` but in-place |
 | **`layoutstats( x )`** | Dry run statistics for `layout( x )` | |
 | **`deeplayoutstats( x )`** | Dry run statistics for `deeplayout( x )` | |
+| **`visualizelayout( x )`** | Visualizes memory layout using terminal graphics | |
+| **`deepvisualizelayout( x )`** | Recursively visualizes memory layout | |
 
 ### 🚀 SIMD Optimization
 
@@ -83,9 +85,9 @@ print( styled"{green:layout}: " ); @btime computeme( X ) setup=(X = layout( orig
 
 ---
 
-## 📊 Dry Run / Statistics
+## 📊 Dry Run / Statistics / Visualization
 
-You can inspect the potential improvements in memory contiguity without performing the actual allocation using `layoutstats` and `deeplayoutstats`.
+You can inspect the potential improvements in memory contiguity without performing the actual allocation using `layoutstats` and `deeplayoutstats`. You can also visualize the memory layout using `visualizelayout` and `deepvisualizelayout`.
 
 ```julia
 julia> using MemoryLayouts
@@ -94,6 +96,14 @@ julia> data = [rand(10) for _ in 1:5];
 
 julia> layoutstats(data)
 LayoutStats(packed=400, blocks=5, span=2304, reduction=1904 (82.6%))
+
+julia> visualizelayout(data)
+Memory Layout Visualization
+  Span: 2 kb
+  Min : 0x7f0a1c000f60 (normalized to 0)
+  Max : 0x7f0a1c001860
+  Scale: 28 b / char
+█░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░█
 ```
 
 The output indicates:
