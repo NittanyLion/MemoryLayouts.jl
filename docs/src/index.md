@@ -206,7 +206,7 @@ fast_result = deeplayout( huge_tree; livedangerously = true )
         * it warns for aliasing
         * alignment used is the maximum of user-specified alignment and machine-required alignment for the type
     - the code makes an attempt to skip types that are not suitable for aligning, but it may not always succeed; use `exclude` to exclude such fields
-    - avoid having fields with low-level objects like pointers
+    - also exclude fields with low-level objects like pointers
 
 ## 🔇 Suppressing the Banner
 
