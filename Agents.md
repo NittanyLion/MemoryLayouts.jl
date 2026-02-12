@@ -15,6 +15,8 @@ MemoryLayouts.jl is a Julia package that optimizes memory layout by ensuring tha
 - **`layout!( x; ... )`**: In-place version for `AbstractDict`.
 - **`layoutstats( x; ... )`**: Returns statistics about memory layout (size, blocks, fragmentation reduction).
 - **`deeplayoutstats( x; ... )`**: Recursive version of `layoutstats`.
+- **`visualizelayout( x; ... )`**: Visualizes memory layout using terminal graphics.
+- **`deepvisualizelayout( x; ... )`**: Recursive version of `visualizelayout`.
 
 ## Key Concepts for AI Agents
 
@@ -189,6 +191,7 @@ Help users debug by checking:
 2.  **Memory layout**: Use `pointer( array )` to verify contiguity
 3.  **Ownership**: Aligned arrays will have `own=false` (checked via `unsafe_wrap` inspection if possible, or usually hidden) but valid pointers.
 4.  **Layout Statistics**: Use `layoutstats(x)` and `deeplayoutstats(x)` to verify how much memory is being packed, block counts, and fragmentation. (Note: `computesize` is internal).
+5.  **Visualization**: Use `visualizelayout(x)` and `deepvisualizelayout(x)` to visually inspect memory fragmentation before and after layout.
 
 ## Example Explanations
 

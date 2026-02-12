@@ -21,10 +21,12 @@ Standard collections in Julia (`Dicts`, `Arrays` of `Arrays`, `structs`) often s
 | **`layout!( x )`** | In-place alignment (e.g. for Dicts) | Like `layout( x )` but in-place |
 | **`layoutstats( x )`** | Dry run statistics for `layout( x )` | |
 | **`deeplayoutstats( x )`** | Dry run statistics for `deeplayout( x )` | |
+| **`visualizelayout( x )`** | Visualizes memory layout using terminal graphics | |
+| **`deepvisualizelayout( x )`** | Recursively visualizes memory layout | |
 
 ## 🛠️ Usage
 
-The package provides four exported functions: `layout`, `deeplayout`, `layoutstats` and `deeplayoutstats`. The distinction between the first two functions is that `layout` only applies to top level objects, whereas `deeplayout` applies to objects at all levels. The two examples below demonstrate their use.  As for the `stats` functions, these just do a dry run and print out some statistics on the degree of contiguity improvement a user can expect to see.
+The package provides six exported functions: `layout`, `deeplayout`, `layoutstats`, `deeplayoutstats`, `visualizelayout` and `deepvisualizelayout`. The distinction between the first two functions is that `layout` only applies to top level objects, whereas `deeplayout` applies to objects at all levels. The two examples below demonstrate their use.  As for the `stats` functions, these just do a dry run and print out some statistics on the degree of contiguity improvement a user can expect to see. The `visualize` functions provide a graphical representation of the memory layout in the terminal.
 
 ### 💡 Example for `layout`
 
@@ -96,7 +98,11 @@ function computeme( X )
 end
 
 println( layoutstats( original() ) )
+println( visualizelayout( original() ) )
+
+
 println( deeplayoutstats( original() ) )
+println( deepvisualizelayout( original() ) )
 
 
 print( styled"{(fg=0xff9999):original}: " ); @btime computeme( X ) setup=( X = original(); );
@@ -107,16 +113,16 @@ print( styled"{(fg=0x9999ff):deeplayout}: " ); @btime computeme( X ) setup=( X =
 
 ## 📊 Dry Run / Statistics
 
-You can inspect the potential improvements in memory contiguity without performing the actual allocation using `layoutstats` and `deeplayoutstats`.
+You can inspect the potential improvements in memory contiguity without performing the actual allocation using `layoutstats` and `deeplayoutstats` or visually by using `visualizelayout` and `deepvisualizelayout`.
 
-```julia
-julia> using MemoryLayouts
+```@example
+using MemoryLayouts
 
-julia> data = [ rand( 10 ) for _ in 1:5 ];
+data = [ rand( 10 ) for _ in 1:5 ];
 
-julia> layoutstats( data )
-LayoutStats(packed=400 b, blocks=5, span=2 kb, reduction=2 kb (82.6%))
-  Level 1: bytes=400 b, blocks=5, span=2 kb, reduction=2 kb (82.6%)
+layoutstats( data )
+
+visualizelayout( data )
 ```
 
 The output indicates:
@@ -224,6 +230,8 @@ deeplayout
 layout!
 layoutstats
 deeplayoutstats
+visualizelayout
+deepvisualizelayout
 ```
 
 

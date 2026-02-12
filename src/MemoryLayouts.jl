@@ -2,10 +2,11 @@ module MemoryLayouts
 using DataStructures, StyledStrings
 using ConstructionBase
 
-export layout, deeplayout, layoutstats, deeplayoutstats, layout!
+export layout, deeplayout, layoutstats, deeplayoutstats, layout!, visualizelayout, deepvisualizelayout
 
 include( "layout.jl" )
 include( "stats.jl" )
+include( "visualization.jl" )
 
 function __init__()
     get( ENV, "MEMORYLAYOUTS", "" ) ∈ ( "false", "no" ) && return
@@ -32,6 +33,8 @@ function __init__()
     println( line( styled"• {magenta:layout!( x )}" ) )
     println( line( styled"• {cyan:layoutstats( x )}" ) )
     println( line( styled"• {cyan:deeplayoutstats( x )}" ) )
+    println( line( styled"• {green:visualizelayout( x )}" ) )
+    println( line( styled"• {green:deepvisualizelayout( x )}" ) )
     println( line( "" ) )
     println( line( styled"{bold,yellow:Usage Notes:}" ) )
     println( line( "Aligned arrays share a single contiguous memory block" ) )

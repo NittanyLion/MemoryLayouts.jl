@@ -175,6 +175,7 @@ end
 layout( s :: AbstractDict; exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false ) = layout!( copy( s ); exclude = exclude, alignment = alignment, livedangerously = livedangerously )
 
 
+computesizedeep( x :: Union{AbstractString, Symbol, Number, Function, Module, IO, Type, Regex, Task, Exception}, ■ :: Vector{UInt8}, offset :: Ref{Int}; kwargs... ) = 0
 
 computesizedeep( x :: AbstractArray; stack = Vector{Any}(), exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false ) = isbitstype( eltype( x ) ) ? alignup( sizeof( eltype( x ) ) * length( x ), alignment ) + sizeof(eltype(x)) : begin
     pushed = !livedangerously && checkcycle(x, stack)
