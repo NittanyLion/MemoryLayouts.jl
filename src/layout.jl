@@ -251,6 +251,8 @@ function deeptransfer( x :: T, ■ :: Vector{UInt8}, offset :: Ref{Int}; stack =
     !livedangerously && checkaliasingwarn( x, visited )
     try
         return constructorof(T)( ( k ∈ exclude ? deepcopy( getfield( x, k ) ) : deeptransfer( getfield( x, k ), ■, offset; stack = stack, visited = visited, exclude = exclude, alignment = alignment, livedangerously = livedangerously ) for k ∈ fieldnames( T ) )... )
+    catch
+        println( "I choked on a field of type $T; please exclude fields with such types from the layout procedure" )
     finally
         popcycle( x, stack, pushed )
     end
