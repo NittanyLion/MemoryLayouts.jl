@@ -225,8 +225,8 @@ function deeptransfer( x :: AbstractArray{T}, ■ :: Vector{UInt8}, offset :: Re
     offset[] += pad
     ▶now = pointer( ■ ) + offset[]
     flat = unsafe_wrap( Array, Ptr{T}( ▶now ), length( x ); own = false )
-    finalizer( _ -> ( ■; nothing ), flat )
     dest = reshape( flat, size( x ) )
+    finalizer( _ -> ( ■; nothing ), dest )
     offset[] += alignup( sz, alignment )
     copyto!( dest, x )
     return newarrayofsametype( x, dest )
