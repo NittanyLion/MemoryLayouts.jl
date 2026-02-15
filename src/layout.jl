@@ -2,6 +2,55 @@
 
 alignup( x, a ) = cld( x, a ) * a
 
+"""
+    LayoutHandle
+
+A handle that tracks the backing memory for arrays created by `layout`, `layout!`, or `deeplayout`.
+Call `release!(handle)` to free the backing memory when the laid-out arrays are no longer needed.
+
+If no handle is passed to `layout` / `deeplayout` / `layout!`, a global store is used instead
+(freed by `release_all!()`).
+"""
+mutable struct LayoutHandle
+    backing  :: IdDict{Vector{UInt8}, Nothing}
+    memories :: Vector{Any}
+    LayoutHandle() = new( IdDict{Vector{UInt8}, Nothing}(), Any[] )
+end
+
+"""
+    release!( handle :: LayoutHandle )
+
+Free the backing memory tracked by this handle.
+Only call this when you are certain no arrays associated with this handle are still in use.
+"""
+function release!( handle :: LayoutHandle )
+    empty!( handle.backing )
+    empty!( handle.memories )
+    return nothing
+end
+
+# Global stores — used when no LayoutHandle is provided.
+const _global_handle = LayoutHandle()
+
+function _register_backing( ■ :: Vector{UInt8}, store :: IdDict{Vector{UInt8}, Nothing} )
+    store[■] = nothing
+end
+
+function _pin_memory( arr, memories :: Vector{Any} )
+    push!( memories, arr.ref.mem )
+end
+
+"""
+    release_all!()
+
+Free all backing buffers retained by `layout`, `layout!`, and `deeplayout` that were
+created **without** a `LayoutHandle`.  Only call this when you are certain no arrays
+created by these functions (without a handle) are still in use.
+"""
+function release_all!()
+    release!( _global_handle )
+end
+
 # Helpers for cycle detection
 function checkcycle( x, stack )
     ismutable( x ) || return false
@@ -57,10 +106,10 @@ newarrayofsametype( :: Any, newdata ) = newdata
 The function `transferadvance` is *for internal use only*.  It assigns memory from the memory block and then advances the `offset`.
 Returns the new array (or the original if no transfer happened).
 """
-transferadvance( x, TT, ■ :: Vector{UInt8}, :: Ref{Int}, :: Int, visited :: Union{IdSet{Any}, Nothing}, livedangerously :: Bool ) = x
+transferadvance( x, TT, ■ :: Vector{UInt8}, :: Ref{Int}, :: Int, visited :: Union{IdSet{Any}, Nothing}, livedangerously :: Bool, :: Vector{Any} ) = x
 
 
-function transferadvance( x, TT :: Type{𝒯}, ■ :: Vector{UInt8}, offset :: Ref{Int}, alignment :: Int, visited :: Union{IdSet{Any}, Nothing}, livedangerously :: Bool ) where 𝒯 
+function transferadvance( x, TT :: Type{𝒯}, ■ :: Vector{UInt8}, offset :: Ref{Int}, alignment :: Int, visited :: Union{IdSet{Any}, Nothing}, livedangerously :: Bool, memories :: Vector{Any} ) where 𝒯 
     # this method is where the hard work is done
     isbitstype( 𝒯 ) || return x               # don't do anything for arrays of nonisbits types
     x isa AbstractArray || return x           # don't bother with nonarrays
@@ -70,21 +119,24 @@ function transferadvance( x, TT :: Type{𝒯}, ■ :: Vector{UInt8}, offset :: R
 
     # Align the offset to the element type requirement
     # We must ensure that (pointer(■) + offset[]) % sizeof(𝒯) == 0
-    currentaddr = UInt(pointer(■)) + UInt(offset[])
-    pad = (sizeof(𝒯) - (currentaddr % sizeof(𝒯))) % sizeof(𝒯)
-    offset[] += pad
+    GC.@preserve ■ begin
+        currentaddr = UInt(pointer(■)) + UInt(offset[])
+        pad = (sizeof(𝒯) - (currentaddr % sizeof(𝒯))) % sizeof(𝒯)
+        offset[] += pad
 
-    ▶ = pointer( ■ ) + offset[]               # set the relevant place in memory
-    @debug styled"""moving {yellow:$( div( length( x ) * sizeof( 𝒯 ), 1024 ) )kb} from {magenta:$(pointer( x ))} to {green:$▶}"""
-    dest = reshape( unsafe_wrap( Array, Ptr{𝒯}( ▶ ), length( x ); own = false ), size( x ) )  
-    finalizer( _ -> ( ■; nothing ), dest )
+        ▶ = pointer( ■ ) + offset[]               # set the relevant place in memory
+        @debug styled"""moving {yellow:$( div( length( x ) * sizeof( 𝒯 ), 1024 ) )kb} from {magenta:$(pointer( x ))} to {green:$▶}"""
+        flat = unsafe_wrap( Array, Ptr{𝒯}( ▶ ), length( x ); own = false )
+        _pin_memory( flat, memories )
+        dest = reshape( flat, size( x ) )
+    end
     offset[] += alignup( length( x ) * sizeof( 𝒯 ), alignment )        # move the offset counter
     copyto!( dest, x )                                                 # move the data
     return newarrayofsametype( x, dest )                               # return new array
 end
 
 
-transferadvance( x, ■ :: Vector{UInt8}, offset :: Ref{Int}, alignment :: Int, visited :: Union{IdSet{Any}, Nothing}, livedangerously :: Bool ) = x isa AbstractArray ? transferadvance( x, eltype( x ), ■, offset, alignment, visited, livedangerously ) : x
+transferadvance( x, ■ :: Vector{UInt8}, offset :: Ref{Int}, alignment :: Int, visited :: Union{IdSet{Any}, Nothing}, livedangerously :: Bool, memories :: Vector{Any} ) = x isa AbstractArray ? transferadvance( x, eltype( x ), ■, offset, alignment, visited, livedangerously, memories ) : x
 
 
 
@@ -108,8 +160,9 @@ Excluded items are preserved as-is (or deep-copied in some contexts) but not pac
 
 $importantadmonition
 """
-function layout( s :: AbstractArray{T}; exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false ) where T
+function layout( s :: AbstractArray{T}; exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false, handle :: Union{LayoutHandle, Nothing} = nothing ) where T
     isbitstype( T ) && return s                 # don't do anything for objects that are not isbits
+    h = something( handle, _global_handle )
     fn = eachindex( s )                         #
     fnalign = filter( k -> k ∉ exclude, fn )    # omit the fields that are to be excluded
     totalsize = sum( k -> computesize( s[k]; alignment = alignment ), fnalign )
@@ -119,15 +172,18 @@ function layout( s :: AbstractArray{T}; exclude = Symbol[], alignment :: Int = 1
     startoffset = Int( ▶aligned - ▶raw )
     offset = Ref( startoffset )
     visited = livedangerously ? nothing : IdSet{Any}()
-    return map!( k -> k ∈ fnalign ? transferadvance( s[k], ■, offset, alignment, visited, livedangerously ) : s[k], similar( s ), fn )
+    result = map!( k -> k ∈ fnalign ? transferadvance( s[k], ■, offset, alignment, visited, livedangerously, h.memories ) : s[k], similar( s ), fn )
+    _register_backing( ■, h.backing )
+    return result
 end
 
-function layout( s :: T; exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false ) where T
+function layout( s :: T; exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false, handle :: Union{LayoutHandle, Nothing} = nothing ) where T
     isbitstype( T ) && return s 
     if !isstructtype( T ) || isempty( fieldnames( T ) )
         @warn styled"can only do {green:structs}, {green:array types}, and {green:dicts} at this point; {red:$T} is none of the above" 
         return s 
     end
+    h = something( handle, _global_handle )
     fn = fieldnames( T )
     fnalign = filter( k -> k ∉ exclude, fn )
     totalsize = sum( k -> computesize( getfield( s, k ); alignment = alignment ), fnalign )
@@ -137,7 +193,9 @@ function layout( s :: T; exclude = Symbol[], alignment :: Int = 1, livedangerous
     startoffset = Int( ▶aligned - ▶raw )
     offset = Ref( startoffset )
     visited = livedangerously ? nothing : IdSet{Any}()
-    return constructorof(T)( ( k ∈ fnalign ? transferadvance( getfield( s, k ), ■, offset, alignment, visited, livedangerously ) : getfield( s, k ) for k ∈ fn )... )
+    result = constructorof(T)( ( k ∈ fnalign ? transferadvance( getfield( s, k ), ■, offset, alignment, visited, livedangerously, h.memories ) : getfield( s, k ) for k ∈ fn )... )
+    _register_backing( ■, h.backing )
+    return result
 end
 
 
@@ -159,7 +217,8 @@ Excluded items are preserved as-is (or deep-copied in some contexts) but not pac
 
 $importantadmonition
 """
-function layout!( s :: AbstractDict; exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false )
+function layout!( s :: AbstractDict; exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false, handle :: Union{LayoutHandle, Nothing} = nothing )
+    h = something( handle, _global_handle )
     keysalign = filter( k -> k ∉ exclude, keys(s) )
     totalsize = sum( k -> computesize( s[k]; alignment = alignment ), keysalign )
     ■ = Vector{UInt8}( undef, totalsize + alignment )
@@ -168,11 +227,12 @@ function layout!( s :: AbstractDict; exclude = Symbol[], alignment :: Int = 1, l
     startoffset = Int( ▶aligned - ▶raw )
     offset = Ref( startoffset )
     visited = livedangerously ? nothing : IdSet{Any}()
-    foreach( k -> s[k] = transferadvance( s[k], ■, offset, alignment, visited, livedangerously ), keysalign )
+    foreach( k -> s[k] = transferadvance( s[k], ■, offset, alignment, visited, livedangerously, h.memories ), keysalign )
+    _register_backing( ■, h.backing )
     return s
 end
 
-layout( s :: AbstractDict; exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false ) = layout!( copy( s ); exclude = exclude, alignment = alignment, livedangerously = livedangerously )
+layout( s :: AbstractDict; exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false, handle :: Union{LayoutHandle, Nothing} = nothing ) = layout!( copy( s ); exclude = exclude, alignment = alignment, livedangerously = livedangerously, handle = handle )
 
 
 computesizedeep( x :: Union{AbstractString, Symbol, Number, Function, Module, IO, Type, Regex, Task, Exception}, ■ :: Vector{UInt8}, offset :: Ref{Int}; kwargs... ) = 0
@@ -207,12 +267,12 @@ function computesizedeep( x :: T; stack = Vector{Any}(), exclude = Symbol[], ali
 end
 
 
-function deeptransfer( x :: AbstractArray{T}, ■ :: Vector{UInt8}, offset :: Ref{Int}; stack = Vector{Any}(), visited = IdSet{Any}(), exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false ) where T
+function deeptransfer( x :: AbstractArray{T}, ■ :: Vector{UInt8}, offset :: Ref{Int}; stack = Vector{Any}(), visited = IdSet{Any}(), exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false, memories :: Vector{Any} = _global_handle.memories ) where T
     if !isbitstype(T)
         pushed = !livedangerously && checkcycle(x, stack)
         !livedangerously && checkaliasingwarn(x, visited)
         try
-            return map( el -> deeptransfer( el, ■, offset; stack = stack, visited = visited, exclude = exclude, alignment = alignment, livedangerously = livedangerously ), x )
+            return map( el -> deeptransfer( el, ■, offset; stack = stack, visited = visited, exclude = exclude, alignment = alignment, livedangerously = livedangerously, memories = memories ), x )
         finally
             popcycle( x, stack, pushed )
         end
@@ -220,24 +280,26 @@ function deeptransfer( x :: AbstractArray{T}, ■ :: Vector{UInt8}, offset :: Re
     sz = sizeof( T ) * length( x )
     sz == 0 && return x
     # Align the offset to the element type requirement
-    currentaddr = UInt( pointer( ■ ) ) + offset[]
-    pad = ( sizeof(T) - ( currentaddr % sizeof( T ) ) ) % sizeof( T )
-    offset[] += pad
-    ▶now = pointer( ■ ) + offset[]
-    flat = unsafe_wrap( Array, Ptr{T}( ▶now ), length( x ); own = false )
-    dest = reshape( flat, size( x ) )
-    finalizer( _ -> ( ■; nothing ), dest )
+    GC.@preserve ■ begin
+        currentaddr = UInt( pointer( ■ ) ) + offset[]
+        pad = ( sizeof(T) - ( currentaddr % sizeof( T ) ) ) % sizeof( T )
+        offset[] += pad
+        ▶now = pointer( ■ ) + offset[]
+        flat = unsafe_wrap( Array, Ptr{T}( ▶now ), length( x ); own = false )
+        _pin_memory( flat, memories )
+        dest = reshape( flat, size( x ) )
+    end
     offset[] += alignup( sz, alignment )
     copyto!( dest, x )
     return newarrayofsametype( x, dest )
 end
 
-function deeptransfer( x :: AbstractDict, ■ :: Vector{UInt8}, offset :: Ref{Int}; stack = Vector{Any}(), visited = IdSet{Any}(), exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false )
+function deeptransfer( x :: AbstractDict, ■ :: Vector{UInt8}, offset :: Ref{Int}; stack = Vector{Any}(), visited = IdSet{Any}(), exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false, memories :: Vector{Any} = _global_handle.memories )
     pushed = livedangerously || checkcycle( x, stack )
     livedangerously || checkaliasingwarn( x, visited )
     try
         D = copy( x )
-        foreach( k -> D[k] = deeptransfer( D[k], ■, offset; stack = stack, visited = visited, exclude = exclude, alignment = alignment, livedangerously = livedangerously ), filter( k -> k ∉ exclude, keys(D) ) )
+        foreach( k -> D[k] = deeptransfer( D[k], ■, offset; stack = stack, visited = visited, exclude = exclude, alignment = alignment, livedangerously = livedangerously, memories = memories ), filter( k -> k ∉ exclude, keys(D) ) )
         return D
     finally
         popcycle( x, stack, pushed )
@@ -246,12 +308,12 @@ end
 
 deeptransfer( x :: Union{AbstractString, Symbol, Number, Function, Module, IO, Type, Regex, Task, Exception}, ■ :: Vector{UInt8}, offset :: Ref{Int}; kwargs... ) = x
 
-function deeptransfer( x :: T, ■ :: Vector{UInt8}, offset :: Ref{Int}; stack = Vector{Any}(), visited = IdSet{Any}(), exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false ) where T
+function deeptransfer( x :: T, ■ :: Vector{UInt8}, offset :: Ref{Int}; stack = Vector{Any}(), visited = IdSet{Any}(), exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false, memories :: Vector{Any} = _global_handle.memories ) where T
     ( isbitstype( T ) || !isstructtype( T ) ) && return x
     pushed = !livedangerously && checkcycle( x, stack )
     !livedangerously && checkaliasingwarn( x, visited )
     try
-        return constructorof(T)( ( k ∈ exclude ? deepcopy( getfield( x, k ) ) : deeptransfer( getfield( x, k ), ■, offset; stack = stack, visited = visited, exclude = exclude, alignment = alignment, livedangerously = livedangerously ) for k ∈ fieldnames( T ) )... )
+        return constructorof(T)( ( k ∈ exclude ? deepcopy( getfield( x, k ) ) : deeptransfer( getfield( x, k ), ■, offset; stack = stack, visited = visited, exclude = exclude, alignment = alignment, livedangerously = livedangerously, memories = memories ) for k ∈ fieldnames( T ) )... )
     catch
         println( "I choked on a field of type $T; please exclude fields with such types from the layout procedure" )
     finally
@@ -277,9 +339,10 @@ Excluded items are preserved as-is (or deep-copied in some contexts) but not pac
 
 $importantadmonition
 """
-function deeplayout( x; exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false )
+function deeplayout( x; exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false, handle :: Union{LayoutHandle, Nothing} = nothing )
     sz = computesizedeep( x; exclude = exclude, alignment = alignment, livedangerously = livedangerously )
     sz == 0 && return deepcopy( x )
+    h = something( handle, _global_handle )
     ■ = Vector{UInt8}( undef, sz + alignment )
     
     ▶raw = pointer( ■ )
@@ -287,7 +350,9 @@ function deeplayout( x; exclude = Symbol[], alignment :: Int = 1, livedangerousl
     startoffset = Int( ▶aligned - ▶raw )
     offset = Ref( startoffset )
     
-    return deeptransfer( x, ■, offset; exclude = exclude, alignment = alignment, livedangerously = livedangerously )
+    result = deeptransfer( x, ■, offset; exclude = exclude, alignment = alignment, livedangerously = livedangerously, memories = h.memories )
+    _register_backing( ■, h.backing )
+    return result
 end
 
 
