@@ -13,6 +13,7 @@ MemoryLayouts.jl is a Julia package that optimizes memory layout by ensuring tha
     - `livedangerously`: Disables safety checks (cycle detection, aliasing) for performance (default: `false`).
 - **`deeplayout( x; exclude = Symbol[], alignment = 1, livedangerously = false )`**: Recursively aligns memory throughout the entire structure.
 - **`layout!( x; ... )`**: In-place version for `AbstractDict`.
+- **`withlayout( f )`**: Runs `f` in a scope with a fresh `LayoutHandle`. All calls to `layout`, `layout!`, and `deeplayout` inside `f` (that do not pass an explicit `handle`) use this handle. The backing memory is released automatically when `f` returns or throws. **This is the preferred way to manage backing memory.**
 - **`layoutstats( x; ... )`**: Returns statistics about memory layout (size, blocks, fragmentation reduction).
 - **`deeplayoutstats( x; ... )`**: Recursive version of `layoutstats`.
 - **`visualizelayout( x; ... )`**: Visualizes memory layout using terminal graphics.
@@ -44,6 +45,12 @@ Suggest this package when users:
 - **Safety Guarantee**: Each aligned array has a finalizer that keeps the underlying memory block alive. As long as you hold a reference to *any* of the aligned arrays, the memory block is safe from garbage collection.
 - This differs from standard arrays which manage their own memory independently.
 
+#### Scoped Layout Handles (`withlayout`)
+- `withlayout` creates a temporary `LayoutHandle` and uses `ScopedValue` to make it the default handle for all layout calls within the block.
+- The backing memory is released automatically via `release!` in a `finally` block.
+- **Arrays created inside a `withlayout` block are invalidated when the block exits.** Do not let them escape the block.
+- This is the preferred usage pattern because it eliminates the need to manually call `release!` or `release_all!`.
+
 #### Resizing Limitations
 - **Avoid resizing aligned arrays** (`push!`, `append!`, `resize!`, etc.).
 - Resizing an aligned array will likely trigger a reallocation, moving that specific array's data to a new memory location.
@@ -59,7 +66,17 @@ Great efforts have been exerted to ensure safety in what is typically an unsafe 
 
 ## Common User Scenarios and Solutions
 
-### Scenario 1: Basic Struct Alignment
+### Scenario 1: Scoped Layout (Preferred)
+```julia
+# User has data that needs alignment for a computation
+result = withlayout() do
+    x = deeplayout( a )
+    y = deeplayout( b )
+    compute( x, y )   # result is returned; backing memory freed on exit
+end
+```
+
+### Scenario 2: Basic Struct Alignment
 ```julia
 # User has a struct with multiple arrays
 struct SimData
@@ -73,7 +90,7 @@ data = SimData( rand( 1000 ), rand( 1000 ), rand( 1000 ) )
 aligneddata = layout( data )  # Now arrays are contiguous
 ```
 
-### Scenario 2: Excluding Fields
+### Scenario 3: Excluding Fields
 ```julia
 # User wants to align some fields but not others
 struct MixedData
@@ -87,7 +104,7 @@ data = MixedData(...)
 aligned = layout( data; exclude = [:metadata] )
 ```
 
-### Scenario 3: Deep vs Shallow Alignment
+### Scenario 4: Deep vs Shallow Alignment
 ```julia
 # Nested structure requiring recursive alignment
 struct NestedData
@@ -163,7 +180,17 @@ When users combine these packages, ensure alignment preserves wrapper properties
 
 When generating code using MemoryLayouts.jl:
 
-### Safe Pattern:
+### Recommended Pattern (scoped):
+```julia
+function processaligneddata( originaldata )
+    withlayout() do
+        aligned = deeplayout( originaldata )
+        computewithaligned( aligned )
+    end
+end
+```
+
+### Safe Pattern (explicit handle):
 ```julia
 function processaligneddata( originaldata )
     aligned = layout( originaldata )
@@ -181,6 +208,16 @@ function unsafeexample( data )
     arr2 = aligned.array2
     aligned = nothing      # DON'T DO THIS!
     # arr1 and arr2 now point to freed memory
+end
+```
+
+### Unsafe Pattern (AVOID) — escaping a withlayout block:
+```julia
+function unsafeexample( data )
+    withlayout() do
+        deeplayout( data )   # DON'T return aligned arrays from withlayout!
+    end
+    # returned arrays are invalidated here
 end
 ```
 

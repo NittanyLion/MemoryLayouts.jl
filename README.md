@@ -28,6 +28,7 @@ The advantage of contiguity is that it reduces cache misses and should be expect
 | **`layout( x )`** | Aligns immediate fields of `x` | Like `copy( x )` but packed |
 | **`deeplayout( x )`** | Recursively aligns nested structures | Like `deepcopy( x )` but packed |
 | **`layout!( x )`** | In-place alignment (e.g. for Dicts) | Like `layout( x )` but in-place |
+| **`withlayout( f )`** | Runs `f` with a scoped layout handle | Automatic memory management |
 | **`layoutstats( x )`** | Dry run statistics for `layout( x )` | |
 | **`deeplayoutstats( x )`** | Dry run statistics for `deeplayout( x )` | |
 | **`visualizelayout( x )`** | Visualizes memory layout using terminal graphics | |
@@ -41,6 +42,21 @@ This allows aligning data to specific byte boundaries (e.g., 32 or 64 bytes), wh
 ```julia
 aligneddata = layout( data; alignment = 64 )
 ```
+
+### 🔒 Scoped Layout Handles
+
+Use `withlayout` to automatically manage backing memory. All calls to `layout`, `deeplayout`, and `layout!` inside the block use a temporary handle that is released when the block exits:
+
+```julia
+result = withlayout() do
+    x = deeplayout( a )
+    y = deeplayout( b )
+    compute( x, y )
+end
+```
+
+> [!WARNING]
+> Arrays created inside a `withlayout` block are **invalidated** when the block exits. Do not let them escape the block.
 
 ---
 

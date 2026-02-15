@@ -19,6 +19,7 @@ Standard collections in Julia (`Dicts`, `Arrays` of `Arrays`, `structs`) often s
 | **`layout( x )`** | Aligns immediate fields of `x` | Like `copy( x )` but packed |
 | **`deeplayout( x )`** | Recursively aligns nested structures | Like `deepcopy( x )` but packed |
 | **`layout!( x )`** | In-place alignment (e.g. for Dicts) | Like `layout( x )` but in-place |
+| **`withlayout( f )`** | Runs `f` with a scoped layout handle | Automatic memory management |
 | **`layoutstats( x )`** | Dry run statistics for `layout( x )` | |
 | **`deeplayoutstats( x )`** | Dry run statistics for `deeplayout( x )` | |
 | **`visualizelayout( x )`** | Visualizes memory layout using terminal graphics | |
@@ -26,7 +27,7 @@ Standard collections in Julia (`Dicts`, `Arrays` of `Arrays`, `structs`) often s
 
 ## 🛠️ Usage
 
-The package provides six exported functions: `layout`, `deeplayout`, `layoutstats`, `deeplayoutstats`, `visualizelayout` and `deepvisualizelayout`. The distinction between the first two functions is that `layout` only applies to top level objects, whereas `deeplayout` applies to objects at all levels. The two examples below demonstrate their use.  As for the `stats` functions, these just do a dry run and print out some statistics on the degree of contiguity improvement a user can expect to see. The `visualize` functions provide a graphical representation of the memory layout in the terminal.
+The package provides the exported functions `layout`, `deeplayout`, `layout!`, `withlayout`, `layoutstats`, `deeplayoutstats`, `visualizelayout` and `deepvisualizelayout`. The distinction between `layout` and `deeplayout` is that `layout` only applies to top level objects, whereas `deeplayout` applies to objects at all levels. The two examples below demonstrate their use.  As for the `stats` functions, these just do a dry run and print out some statistics on the degree of contiguity improvement a user can expect to see. The `visualize` functions provide a graphical representation of the memory layout in the terminal.
 
 ### 💡 Example for `layout`
 
@@ -171,7 +172,25 @@ pointer( aligneddata.a ) # Will be a multiple of 64
 pointer( aligneddata.b ) # Will be a multiple of 64
 ```
 
-## 🏎️ Performance Mode (Live Dangerously)
+## 🔒 Scoped Layout Handles
+
+Use `withlayout` to automatically manage backing memory. All calls to `layout`, `layout!`, and `deeplayout` inside the block (that do not pass an explicit `handle`) use a temporary `LayoutHandle` that is released automatically when the block exits (or throws):
+
+```julia
+result = withlayout() do
+    x = deeplayout( a )
+    y = deeplayout( b )
+    compute( x, y )
+end
+```
+
+This is the preferred way to manage memory: no explicit `release!` call is needed, and there is no risk of forgetting to free the backing memory.
+
+!!! warning
+    Arrays created inside the scope are **invalidated** when the scope exits.
+    Do not let them escape the block.
+
+## 🏈️ Performance Mode (Live Dangerously)
 
 By default, `MemoryLayouts` performs checks to ensure robustness:
 1.  **Cycle Detection**: Prevents `StackOverflowError` if your data structure has cycles (e.g. A -> B -> A).
@@ -228,6 +247,7 @@ export MEMORYLAYOUTS="false"
 layout
 deeplayout
 layout!
+withlayout
 layoutstats
 deeplayoutstats
 visualizelayout

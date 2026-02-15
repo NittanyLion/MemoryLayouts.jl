@@ -1,8 +1,9 @@
 module MemoryLayouts
 using DataStructures, StyledStrings
 using ConstructionBase
+using Base.ScopedValues: ScopedValue, with
 
-export layout, deeplayout, layoutstats, deeplayoutstats, layout!, visualizelayout, deepvisualizelayout, release_all!, LayoutHandle, release!
+export layout, deeplayout, layoutstats, deeplayoutstats, layout!, visualizelayout, deepvisualizelayout, release_all!, LayoutHandle, release!, withlayout
 
 include( "layout.jl" )
 include( "stats.jl" )

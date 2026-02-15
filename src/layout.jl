@@ -8,7 +8,25 @@ alignup( x, a ) = cld( x, a ) * a
 A handle that tracks the backing memory for arrays created by `layout`, `layout!`, or `deeplayout`.
 Call `release!(handle)` to free the backing memory when the laid-out arrays are no longer needed.
 
-If no handle is passed to `layout` / `deeplayout` / `layout!`, a global store is used instead
+Preferred usage is via `withlayout`, which creates a scoped handle and releases it automatically:
+
+```julia
+result = withlayout() do
+    x = deeplayout( a )
+    y = deeplayout( b )
+    compute( x, y )
+end
+```
+
+Alternatively, pass an explicit handle:
+
+```julia
+h = LayoutHandle()
+x = deeplayout( a; handle = h )
+release!( h )
+```
+
+If no handle is passed and no `withlayout` scope is active, a global store is used instead
 (freed by `release_all!()`).
 """
 mutable struct LayoutHandle
@@ -31,6 +49,7 @@ end
 
 # Global stores — used when no LayoutHandle is provided.
 const _global_handle = LayoutHandle()
+const _layout_scope = ScopedValue( _global_handle )
 
 function _register_backing( ■ :: Vector{UInt8}, store :: IdDict{Vector{UInt8}, Nothing} )
     store[■] = nothing
@@ -49,6 +68,35 @@ created by these functions (without a handle) are still in use.
 """
 function release_all!()
     release!( _global_handle )
+end
+
+"""
+    withlayout( f :: Function )
+
+Run `f` in a scope with a fresh `LayoutHandle`.  All calls to `layout`, `layout!`, and
+`deeplayout` inside `f` (that do not pass an explicit `handle`) will use this handle.
+The backing memory is released automatically when `f` returns (or throws).
+
+# Example
+```julia
+result = withlayout() do
+    x = deeplayout( a )
+    y = deeplayout( b )
+    compute( x, y )
+end
+```
+
+!!! warning
+    Arrays created inside the scope are **invalidated** when the scope exits.
+    Do not let them escape the block.
+"""
+function withlayout( f :: Function )
+    h = LayoutHandle()
+    try
+        return with( f, _layout_scope => h )
+    finally
+        release!( h )
+    end
 end
 
 # Helpers for cycle detection
@@ -162,7 +210,7 @@ $importantadmonition
 """
 function layout( s :: AbstractArray{T}; exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false, handle :: Union{LayoutHandle, Nothing} = nothing ) where T
     isbitstype( T ) && return s                 # don't do anything for objects that are not isbits
-    h = something( handle, _global_handle )
+    h = something( handle, _layout_scope[] )
     fn = eachindex( s )                         #
     fnalign = filter( k -> k ∉ exclude, fn )    # omit the fields that are to be excluded
     totalsize = sum( k -> computesize( s[k]; alignment = alignment ), fnalign )
@@ -183,7 +231,7 @@ function layout( s :: T; exclude = Symbol[], alignment :: Int = 1, livedangerous
         @warn styled"can only do {green:structs}, {green:array types}, and {green:dicts} at this point; {red:$T} is none of the above" 
         return s 
     end
-    h = something( handle, _global_handle )
+    h = something( handle, _layout_scope[] )
     fn = fieldnames( T )
     fnalign = filter( k -> k ∉ exclude, fn )
     totalsize = sum( k -> computesize( getfield( s, k ); alignment = alignment ), fnalign )
@@ -218,7 +266,7 @@ Excluded items are preserved as-is (or deep-copied in some contexts) but not pac
 $importantadmonition
 """
 function layout!( s :: AbstractDict; exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false, handle :: Union{LayoutHandle, Nothing} = nothing )
-    h = something( handle, _global_handle )
+    h = something( handle, _layout_scope[] )
     keysalign = filter( k -> k ∉ exclude, keys(s) )
     totalsize = sum( k -> computesize( s[k]; alignment = alignment ), keysalign )
     ■ = Vector{UInt8}( undef, totalsize + alignment )
@@ -267,7 +315,7 @@ function computesizedeep( x :: T; stack = Vector{Any}(), exclude = Symbol[], ali
 end
 
 
-function deeptransfer( x :: AbstractArray{T}, ■ :: Vector{UInt8}, offset :: Ref{Int}; stack = Vector{Any}(), visited = IdSet{Any}(), exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false, memories :: Vector{Any} = _global_handle.memories ) where T
+function deeptransfer( x :: AbstractArray{T}, ■ :: Vector{UInt8}, offset :: Ref{Int}; stack = Vector{Any}(), visited = IdSet{Any}(), exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false, memories :: Vector{Any} = _layout_scope[].memories ) where T
     if !isbitstype(T)
         pushed = !livedangerously && checkcycle(x, stack)
         !livedangerously && checkaliasingwarn(x, visited)
@@ -294,7 +342,7 @@ function deeptransfer( x :: AbstractArray{T}, ■ :: Vector{UInt8}, offset :: Re
     return newarrayofsametype( x, dest )
 end
 
-function deeptransfer( x :: AbstractDict, ■ :: Vector{UInt8}, offset :: Ref{Int}; stack = Vector{Any}(), visited = IdSet{Any}(), exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false, memories :: Vector{Any} = _global_handle.memories )
+function deeptransfer( x :: AbstractDict, ■ :: Vector{UInt8}, offset :: Ref{Int}; stack = Vector{Any}(), visited = IdSet{Any}(), exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false, memories :: Vector{Any} = _layout_scope[].memories )
     pushed = livedangerously || checkcycle( x, stack )
     livedangerously || checkaliasingwarn( x, visited )
     try
@@ -308,7 +356,7 @@ end
 
 deeptransfer( x :: Union{AbstractString, Symbol, Number, Function, Module, IO, Type, Regex, Task, Exception}, ■ :: Vector{UInt8}, offset :: Ref{Int}; kwargs... ) = x
 
-function deeptransfer( x :: T, ■ :: Vector{UInt8}, offset :: Ref{Int}; stack = Vector{Any}(), visited = IdSet{Any}(), exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false, memories :: Vector{Any} = _global_handle.memories ) where T
+function deeptransfer( x :: T, ■ :: Vector{UInt8}, offset :: Ref{Int}; stack = Vector{Any}(), visited = IdSet{Any}(), exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false, memories :: Vector{Any} = _layout_scope[].memories ) where T
     ( isbitstype( T ) || !isstructtype( T ) ) && return x
     pushed = !livedangerously && checkcycle( x, stack )
     !livedangerously && checkaliasingwarn( x, visited )
@@ -342,7 +390,7 @@ $importantadmonition
 function deeplayout( x; exclude = Symbol[], alignment :: Int = 1, livedangerously :: Bool = false, handle :: Union{LayoutHandle, Nothing} = nothing )
     sz = computesizedeep( x; exclude = exclude, alignment = alignment, livedangerously = livedangerously )
     sz == 0 && return deepcopy( x )
-    h = something( handle, _global_handle )
+    h = something( handle, _layout_scope[] )
     ■ = Vector{UInt8}( undef, sz + alignment )
     
     ▶raw = pointer( ■ )
