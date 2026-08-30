@@ -233,12 +233,12 @@ fast_result = deeplayout( huge_tree; livedangerously = true )
     - the code makes an attempt to skip types that are not suitable for aligning, but it may not always succeed; use `exclude` to exclude such fields
     - also exclude fields with low-level objects like pointers
 
-## 🔇 Suppressing the Banner
+## 📣 Enabling the Banner
 
-You can suppress the startup banner by setting the environment variable `MEMORYLAYOUTS` to `"false"` or `"no"`.
+The startup banner is off by default.  To print it on load, set the environment variable `MEMORYLAYOUTS` to `"true"` or `"yes"` before starting Julia (or before `using MemoryLayouts`):
 
 ```bash
-export MEMORYLAYOUTS="false"
+export MEMORYLAYOUTS="true"
 ```
 
 ## 📖 Function documentation

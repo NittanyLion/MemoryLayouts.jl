@@ -9,8 +9,20 @@ include( "layout.jl" )
 include( "stats.jl" )
 include( "visualization.jl" )
 
+"""
+    MEMORYLAYOUTS
+
+Set `ENV[ "MEMORYLAYOUTS" ]` to `"true"` or `"yes"` **before** loading this package to print the
+greeting below on load.  It is off by default: `__init__` runs whenever anything anywhere in the
+session depends on this package, including transitively, and a package that announces itself
+unbidden is noise in every log of every dependent.  A dependent cannot switch it off from its own
+code either -- this `__init__` runs before any of the dependent's own top-level code does -- so
+opt-in is the only setting that leaves the choice with the person at the terminal.
+"""
+bannerwanted() = get( ENV, "MEMORYLAYOUTS", "" ) ∈ ( "true", "yes" )
+
 function __init__()
-    get( ENV, "MEMORYLAYOUTS", "" ) ∈ ( "false", "no" ) && return
+    bannerwanted() || return
 
     width = 80
     stars_h = "*"^width
