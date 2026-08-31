@@ -34,7 +34,7 @@ end
 
 X = original()
 @info "layout statistics:" deeplayoutstats(X)
-@info "layout statistics:" deepvisualizelayout(X)
+deepvisualizelayout(X)
 
 print(styled"{red:original}: ");
 @btime computeme(X) setup = (X = original());

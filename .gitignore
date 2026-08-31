@@ -1,4 +1,6 @@
 /Manifest*.toml
 /docs/Manifest*.toml
+/examples/Manifest*.toml
 /docs/build/
+*.mem
 WARP.md

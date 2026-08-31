@@ -99,11 +99,11 @@ function computeme( X )
 end
 
 println( layoutstats( original() ) )
-println( visualizelayout( original() ) )
+visualizelayout( original() )
 
 
 println( deeplayoutstats( original() ) )
-println( deepvisualizelayout( original() ) )
+deepvisualizelayout( original() )
 
 
 print( styled"{(fg=0xff9999):original}: " ); @btime computeme( X ) setup=( X = original(); );
@@ -137,10 +137,11 @@ The output indicates:
 
 * `MemoryLayouts.jl` is compatible with 
   - [`AxisKeys`](https://github.com/mcabbott/AxisKeys.jl)
-  - [`InlineStrings`](https://github.com/JuliaStrings/InlineStrings.jl)
   - [`NamedDims.jl`](https://github.com/invenia/NamedDims.jl) 
   - [`OffsetArrays`](https://github.com/JuliaArrays/OffsetArrays.jl)
 * this assumes that those packages are loaded by the user (weak dependences)
+* arrays of [`InlineStrings`](https://github.com/JuliaStrings/InlineStrings.jl) are `isbits` and are packed like arrays of numbers; no extension is needed
+* other array types (ranges, views, `BitArray`s, static arrays, ...) are passed through untouched; support for a new wrapper type can be added by defining `MemoryLayouts.transferable` and `MemoryLayouts.newarrayofsametype` for it
 
 
 
@@ -172,9 +173,22 @@ pointer( aligneddata.a ) # Will be a multiple of 64
 pointer( aligneddata.b ) # Will be a multiple of 64
 ```
 
-## 🔒 Scoped Layout Handles
+## 🔒 Memory Management
 
-Use `withlayout` to automatically manage backing memory. All calls to `layout`, `layout!`, and `deeplayout` inside the block (that do not pass an explicit `handle`) use a temporary `LayoutHandle` that is released automatically when the block exits (or throws):
+All arrays produced by one call to `layout` or `deeplayout` are views into a single contiguous block.  Who keeps that block alive depends on how the call was made.
+
+### Default: garbage collected
+
+Without a handle, the block is kept alive by the garbage collector for as long as *any* array pointing into it is alive, and freed once the last one is collected.  Nothing needs to be released by hand, arrays may be extracted from the laid-out object and used on their own, and there is no leak.
+
+```julia
+aligned = layout( data )
+a = aligned.a          # fine to keep around; the block lives as long as `a` does
+```
+
+### Deterministic: `withlayout` and `LayoutHandle`
+
+When a block is large and you want it freed at a known point rather than at the garbage collector's discretion, use `withlayout`.  All calls to `layout`, `layout!`, and `deeplayout` inside the block (that do not pass an explicit `handle`) use a temporary `LayoutHandle` that is released when the block exits (or throws):
 
 ```julia
 result = withlayout() do
@@ -184,19 +198,25 @@ result = withlayout() do
 end
 ```
 
-This is the preferred way to manage memory: no explicit `release!` call is needed, and there is no risk of forgetting to free the backing memory.
+An explicit handle does the same by hand:
+
+```julia
+h = LayoutHandle()
+x = deeplayout( a; handle = h )
+compute( x )
+release!( h )
+```
 
 !!! warning
-    Arrays created inside the scope are **invalidated** when the scope exits.
-    Do not let them escape the block.
+    Arrays created with a handle point into **freed memory** once the handle is released (for `withlayout`: once the block exits).  Using such an array afterwards is undefined behavior: it may return garbage or crash the process.  Do not let them escape; return plain results (numbers, copies) instead.
 
 ## 🏈️ Performance Mode (Live Dangerously)
 
 By default, `MemoryLayouts` performs checks to ensure robustness:
-1.  **Cycle Detection**: Prevents `StackOverflowError` if your data structure has cycles (e.g. A -> B -> A).
-2.  **Aliasing Warnings**: Warns if multiple fields point to the same array (which `MemoryLayouts` will duplicate, breaking the shared reference).
+1.  **Cycle Detection**: Prevents `StackOverflowError` if your data structure has cycles (e.g. A -> B -> A); an `ArgumentError` is thrown instead.
+2.  **Sharing Preservation**: An array (or container) referenced from several places is laid out once, and every place sees the same new array, exactly as with `deepcopy`.
 
-If you are confident your data is acyclic and you don't care about shared references (or know you don't have them), you can disable these checks for a small performance boost by setting `livedangerously = true`.
+If you are confident your data is acyclic and you don't care about shared references (they will be duplicated), you can disable these checks for a small performance boost by setting `livedangerously = true`.
 
 ```julia
 # Faster, but crashes on cycles!
@@ -208,7 +228,7 @@ fast_result = deeplayout( huge_tree; livedangerously = true )
 !!! warning "Important details"
     - it operates on various types of collections including `structs`, `arrays`, and `dicts`
         * *operating on* means that these collections are traversed, possibly recursively
-    - the only objects that are copied into contiguous memory are `isbits` `arrays` (think arrays of numbers, InlineStrings (but **not** regular strings), etcetera )
+    - the only objects that are copied into contiguous memory are plain `Array`s (plus the wrappers supported by the extensions) with `isbits` element types (think arrays of numbers, InlineStrings (but **not** regular strings), etcetera ); ranges, views, `BitArray`s and other array types are passed through untouched
     - the more scattered is the memory before the layout change, the greater is the potential speed gain
     - `layout` copies, but only the top level; see example 2 above
         * `deeplayout` copies all levels
@@ -217,25 +237,27 @@ fast_result = deeplayout( huge_tree; livedangerously = true )
         * the package assigns one memory block and within that block uses `unsafe_wraps` to obtain Julia arrays
             - this *can* have 'interesting' consequences if misused
             - ergo, this package should not be used by those new to programming 
-        * objects can be excluded from layout changes via the `exclude` keyword
-    - there is overhead in laying out memory initially and (to a much lesser extent) to running the finalizer
+        * objects can be excluded from layout changes via the `exclude` keyword; a name in `exclude` matches a field or dictionary key of that name at **any** depth
+        * `layout` shares excluded values with the original; `deeplayout` deep-copies them
+    - there is overhead in laying out memory initially
     - thus, `MemoryLayouts` works best for aligning memory in a collection once and then using it for an extended stretch
     - resizing one of the arrays whose memory was laid out by `MemoryLayouts` is safe, but likely results in that array being moved to another location in memory **assigned by Julia** (not by `MemoryLayouts`)
     - reassigning an array assigned by `MemoryLayouts` to another location, e.g. by writing `y[i] = ...` does not release the entire memory block
-    - the entire memory block is only released if the entire collection loses scope
+    - without a handle, the entire memory block is only released once every array pointing into it has been garbage collected; with a handle, it is released by `release!` (see above)
     - by default, `MemoryLayouts` packs in the isbits arrays as tightly as it can
         * this may not be optimal, e.g. for AVX-512 computations
         * use the `alignment=64` option to give up some contiguity and regain alignment desired for optimal AVX-512 performance
     - the code has a number of safety checks and features:
         * it throws an error on detecting cyclic content (a depends on b depends on a) 
-        * it warns for aliasing
+        * it preserves sharing (an array referenced twice is moved once)
+        * it throws an informative error if a struct cannot be rebuilt from its laid-out fields
         * alignment used is the maximum of user-specified alignment and machine-required alignment for the type
     - the code makes an attempt to skip types that are not suitable for aligning, but it may not always succeed; use `exclude` to exclude such fields
     - also exclude fields with low-level objects like pointers
 
 ## 🔇 Suppressing the Banner
 
-You can suppress the startup banner by setting the environment variable `MEMORYLAYOUTS` to `"false"` or `"no"`.
+The startup banner is only shown in interactive sessions.  You can suppress it there too by setting the environment variable `MEMORYLAYOUTS` to `"false"` or `"no"`; `MemoryLayouts.banner()` prints it on demand.
 
 ```bash
 export MEMORYLAYOUTS="false"
@@ -248,10 +270,16 @@ layout
 deeplayout
 layout!
 withlayout
+LayoutHandle
+release!
+release_all!
 layoutstats
 deeplayoutstats
 visualizelayout
 deepvisualizelayout
+MemoryLayouts.transferable
+MemoryLayouts.newarrayofsametype
+MemoryLayouts.banner
 ```
 
 

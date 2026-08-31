@@ -43,9 +43,11 @@ This allows aligning data to specific byte boundaries (e.g., 32 or 64 bytes), wh
 aligneddata = layout( data; alignment = 64 )
 ```
 
-### 🔒 Scoped Layout Handles
+### 🔒 Memory Management
 
-Use `withlayout` to automatically manage backing memory. All calls to `layout`, `deeplayout`, and `layout!` inside the block use a temporary handle that is released when the block exits:
+By default, nothing needs to be managed: the contiguous block behind the arrays returned by `layout` and `deeplayout` is kept alive by the garbage collector for as long as any of those arrays is alive, and freed afterwards.
+
+For deterministic release of a large block, use `withlayout`. All calls to `layout`, `deeplayout`, and `layout!` inside the block use a temporary handle that is released when the block exits:
 
 ```julia
 result = withlayout() do
@@ -56,7 +58,7 @@ end
 ```
 
 > [!WARNING]
-> Arrays created inside a `withlayout` block are **invalidated** when the block exits. Do not let them escape the block.
+> Arrays created inside a `withlayout` block point into **freed memory** once the block exits. Do not let them escape the block; return plain results instead.
 
 ---
 
@@ -116,8 +118,8 @@ LayoutStats(packed=400, blocks=5, span=2304, reduction=1904 (82.6%))
 julia> visualizelayout(data)
 Memory Layout Visualization
   Span: 2 kb
-  Min : 0x7f0a1c000f60 (normalized to 0)
-  Max : 0x7f0a1c001860
+  Min : 0x7f0a1c000f60 (leftmost point)
+  Max : 0x7f0a1c001860 (rightmost point)
   Scale: 28 b / char
 █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░█
 ```
@@ -134,8 +136,10 @@ The output indicates:
 
 > [!IMPORTANT]
 > 1. Use the statistics to evaluate whether packing is worth it.
-> 2. There are some issues to pay attention to: please read the documentation carefully.
-> 3. This is the first version of this package: comments are welcome.
+> 2. Only plain `Array`s (and the wrappers listed below) with `isbits` element types are moved; ranges, views, `BitArray`s, etc. are passed through untouched.
+> 3. Shared arrays stay shared, as with `deepcopy`.
+> 4. There are some issues to pay attention to: please read the documentation carefully.
+> 5. This is the first version of this package: comments are welcome.
 
 ---
 
@@ -143,11 +147,10 @@ The output indicates:
 
 `MemoryLayouts` is further compatible with:
 * 🔑 [`AxisKeys`](https://github.com/mcabbott/AxisKeys.jl)
-* 📝 [`InlineStrings`](https://github.com/JuliaStrings/InlineStrings.jl)
 * 🏷️ [`NamedDims.jl`](https://github.com/invenia/NamedDims.jl) 
 * 📏 [`OffsetArrays`](https://github.com/JuliaArrays/OffsetArrays.jl)
 
-(Assumes these packages are loaded by the user)
+(Assumes these packages are loaded by the user.)  Arrays of [`InlineStrings`](https://github.com/JuliaStrings/InlineStrings.jl) are packed like arrays of numbers; no extension is needed.
 
 ---
 

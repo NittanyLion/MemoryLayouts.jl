@@ -1,6 +1,6 @@
 struct LevelStats
-    bytes :: Int
-    blocks :: Int
+    bytes   :: Int
+    blocks  :: Int
     minaddr :: UInt
     maxaddr :: UInt
 end
@@ -10,48 +10,46 @@ Base.zero( :: Type{LevelStats} ) = LevelStats( 0, 0, typemax( UInt ), typemin( U
 
 struct LayoutStats
     summary :: LevelStats
-    levels :: Dict{Int, LevelStats}
+    levels  :: Dict{Int, LevelStats}
 end
 
-function Base.:+( a :: LayoutStats, b :: LayoutStats )
-    summary = a.summary + b.summary
-    levels = merge( +, a.levels, b.levels )
-    LayoutStats( summary, levels )
-end
-
+Base.:+( a :: LayoutStats, b :: LayoutStats ) = LayoutStats( a.summary + b.summary, merge( +, a.levels, b.levels ) )
 Base.zero( :: Type{LayoutStats} ) = LayoutStats( zero( LevelStats ), Dict{Int, LevelStats}() )
 
 const sizedescriptor = [ "b", "kb", "mb", "gb", "tb", "pb" ]
 
-function prsz( units, level = 1 )
-    d = div( units, 1_024, RoundNearestTiesUp ) 
-    @assert 1 ≤ level ≤ length( sizedescriptor )
-    return  ( d ≥ 2 || ( d == 1 && ( level ≥ 2 && units ≥ 1024 ) ) ) ? prsz( div( units, 1_024 ), level + 1 ) : "$units $(sizedescriptor[level])"    
+# human-readable byte count: exact below 1 kb, one decimal above
+function prsz( units :: Integer )
+    level = 1
+    x = float( units )
+    while x ≥ 1024 && level < length( sizedescriptor )
+        x /= 1024
+        level += 1
+    end
+    return level == 1 ? "$units b" : "$(round( x; digits = 1 )) $(sizedescriptor[level])"
 end
 
-
-function Base.show( io :: IO, ls :: LayoutStats )
-    s = ls.summary
-    span = ( s.maxaddr > s.minaddr ) ? Int( s.maxaddr - s.minaddr ) : 0
+function describe( io :: IO, s :: LevelStats )
+    span = s.maxaddr > s.minaddr ? Int( s.maxaddr - s.minaddr ) : 0
     reduction = span - s.bytes
     reductionpct = span > 0 ? round( 100 * reduction / span; digits = 1 ) : 0.0
-    print( io, "LayoutStats( packed=$( prsz( s.bytes ) ), blocks=$( s.blocks ), span=$( prsz( span ) ), reduction=$( prsz( reduction ) ) ($reductionpct%) )" )
+    print( io, "packed=$( prsz( s.bytes ) ), blocks=$( s.blocks ), span=$( prsz( span ) ), reduction=$( prsz( reduction ) ) ($reductionpct%)" )
+end
+
+Base.show( io :: IO, ls :: LayoutStats ) = ( print( io, "LayoutStats( " ); describe( io, ls.summary ); print( io, " )" ) )
+
+function Base.show( io :: IO, :: MIME"text/plain", ls :: LayoutStats )
+    show( io, ls )
     for level ∈ sort( collect( keys( ls.levels ) ) )
-        ℓ = ls.levels[level]
-        ℓspan = ( ℓ.maxaddr > ℓ.minaddr ) ? Int( ℓ.maxaddr - ℓ.minaddr ) : 0
-        ℓreduction = ℓspan - ℓ.bytes
-        ℓreductionpct = ℓspan > 0 ? round( 100 * ℓreduction / ℓspan; digits = 1 ) : 0.0
-        print( io, "\n  Level $level: bytes=$( prsz( ℓ.bytes ) ), blocks=$( ℓ.blocks ), span=$( prsz( ℓspan ) ), reduction=$( prsz( ℓreduction ) ) ($ℓreductionpct%)" )
+        print( io, "\n  Level $level: " )
+        describe( io, ls.levels[level] )
     end
 end
 
-computestats( :: Any; kwargs... ) = zero( LayoutStats )
-
-function computestats( x :: AbstractArray; alignment :: Int = 1, level :: Int = 1 )
-    (isbitstype( eltype( x ) ) && length( x ) > 0) || return zero( LayoutStats )
-    sz = alignup( sizeof( eltype( x ) ) * length( x ), alignment )
-    ptr = UInt( pointer( x ) )
-    stats = LevelStats( sz, 1, ptr, ptr + sizeof( x ) )
+function blockstats( x, alignment :: Int, level :: Int )
+    packable( x ) || return zero( LayoutStats )
+    ptr = UInt( pointer( underlying( x ) ) )
+    stats = LevelStats( alignup( sizeof( eltype( x ) ) * length( x ), alignment ), 1, ptr, ptr + sizeof( eltype( x ) ) * length( x ) )
     return LayoutStats( stats, Dict( level => stats ) )
 end
 
@@ -68,33 +66,39 @@ The returned object includes:
 """
 function layoutstats( s :: AbstractArray{T}; exclude = Symbol[], alignment :: Int = 1 ) where T
     isbitstype( T ) && return zero( LayoutStats )
-    fnalign = filter( k -> k ∉ exclude, eachindex( s ) )
-    return mapreduce( k -> computestats( s[k]; alignment = alignment ), +, fnalign; init = zero( LayoutStats ) )
+    return mapreduce( k -> blockstats( s[k], alignment, 1 ), +, filter( k -> k ∉ exclude, eachindex( s ) ); init = zero( LayoutStats ) )
 end
 
 function layoutstats( s :: T; exclude = Symbol[], alignment :: Int = 1 ) where T
-    (isbitstype( T ) || !isstructtype( T ) ) && return zero( LayoutStats )
-    fn = fieldnames( T )
-    fnalign = filter( k -> k ∉ exclude, fn )
-    return mapreduce( k -> computestats( getfield( s, k ); alignment = alignment ), +, fnalign; init = zero( LayoutStats ) )
+    ( isbitstype( T ) || !isstructtype( T ) ) && return zero( LayoutStats )
+    return mapreduce( k -> blockstats( getfield( s, k ), alignment, 1 ), +, filter( k -> k ∉ exclude, fieldnames( T ) ); init = zero( LayoutStats ) )
 end
 
-layoutstats( s :: AbstractDict; exclude = Symbol[], alignment :: Int = 1 ) = mapreduce( k -> computestats( s[k]; alignment = alignment ), +, filter( k -> k ∉ exclude, keys( s ) ); init = zero( LayoutStats ) )
+layoutstats( s :: AbstractDict; exclude = Symbol[], alignment :: Int = 1 ) = mapreduce( k -> blockstats( s[k], alignment, 1 ), +, filter( k -> k ∉ exclude, keys( s ) ); init = zero( LayoutStats ) )
 
-function computestatsdeep( x :: AbstractArray; exclude = Symbol[], alignment :: Int = 1, level :: Int = 0 )
-    if isbitstype( eltype( x ) ) && length( x ) > 0
-        sz = alignup( sizeof( eltype( x ) ) * length( x ), alignment )
-        ptr = UInt( pointer( x ) )
-        stats = LevelStats( sz, 1, ptr, ptr + sizeof( x ) )
-        return LayoutStats( stats, Dict( level => stats ) )
+# Deep statistics reuse the traversal bookkeeping of deeplayout (cycle detection, exclusion).
+deepstats( :: Leaf, :: Block, :: Int ) = zero( LayoutStats )
+
+function deepstats( x :: AbstractArray, b :: Block, level :: Int )
+    packable( x ) && return sizeonce( () -> blockstats( x, b.alignment, level ), x, b, zero( LayoutStats ) )
+    traversable( x ) || return zero( LayoutStats )
+    withcycle( x, b ) do
+        mapreduce( el -> deepstats( el, b, level + 1 ), +, x; init = zero( LayoutStats ) )
     end
-    return mapreduce( el -> computestatsdeep( el; exclude = exclude, alignment = alignment, level = level + 1 ), +, x; init = zero( LayoutStats ) )
 end
 
-computestatsdeep( x :: AbstractDict; exclude = Symbol[], alignment :: Int = 1, level :: Int = 0 ) = 
-    mapreduce( k -> k ∈ exclude ? zero( LayoutStats ) : computestatsdeep( x[k]; exclude = exclude, alignment = alignment, level = level + 1 ), +, keys(x); init = zero( LayoutStats ) )
+function deepstats( x :: AbstractDict, b :: Block, level :: Int )
+    withcycle( x, b ) do
+        mapreduce( k -> excluded( k, b ) ? zero( LayoutStats ) : deepstats( x[k], b, level + 1 ), +, keys( x ); init = zero( LayoutStats ) )
+    end
+end
 
-computestatsdeep( x :: T; exclude = Symbol[], alignment :: Int = 1, level :: Int = 0 ) where T = isbitstype( T ) || !isstructtype( T ) ? zero( LayoutStats ) : mapreduce( k -> k ∈ exclude ? zero( LayoutStats ) : computestatsdeep( getfield( x, k ); exclude = exclude, alignment = alignment, level = level + 1 ), +, fieldnames( T ); init = zero( LayoutStats ) )
+function deepstats( x :: T, b :: Block, level :: Int ) where T
+    ( isbitstype( T ) || !isstructtype( T ) ) && return zero( LayoutStats )
+    withcycle( x, b ) do
+        mapreduce( k -> excluded( k, b ) ? zero( LayoutStats ) : deepstats( getfield( x, k ), b, level + 1 ), +, fieldnames( T ); init = zero( LayoutStats ) )
+    end
+end
 
 """
     deeplayoutstats( x; exclude = Symbol[], alignment :: Int = 1 )
@@ -107,4 +111,4 @@ The returned object includes:
 - `span`: The distance between the minimum and maximum memory addresses of the data.
 - `reduction`: The potential reduction in memory span (span - bytes).
 """
-deeplayoutstats( x; exclude = Symbol[], alignment :: Int = 1 ) = computestatsdeep( x; exclude = exclude, alignment = alignment )
+deeplayoutstats( x; exclude = Symbol[], alignment :: Int = 1 ) = deepstats( x, Block( exclude, alignment, nothing, false ), 0 )

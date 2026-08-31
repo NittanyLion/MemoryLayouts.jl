@@ -12,13 +12,11 @@ StyledStrings = "f489334b-da3d-4c2e-b8f0-e476e12c162b"
 
 [weakdeps]
 AxisKeys = "94b1ba4f-4ee9-5380-92f1-94cde586c3c5"
-InlineStrings = "842dd82b-1e85-43dc-bf29-5d0ee9dffc48"
 NamedDims = "356022a1-0364-5f58-8944-0da4b18d706f"
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 
 [extensions]
 MemoryLayoutsAxisKeysExt = "AxisKeys"
-MemoryLayoutsInlineStringsExt = "InlineStrings"
 MemoryLayoutsNamedDimsExt = "NamedDims"
 MemoryLayoutsOffsetArraysExt = "OffsetArrays"
 
@@ -37,9 +35,12 @@ julia = "1.12"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+AxisKeys = "94b1ba4f-4ee9-5380-92f1-94cde586c3c5"
 InlineStrings = "842dd82b-1e85-43dc-bf29-5d0ee9dffc48"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+NamedDims = "356022a1-0364-5f58-8944-0da4b18d706f"
+OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "InlineStrings", "JET", "Test"]
+test = ["Aqua", "AxisKeys", "InlineStrings", "JET", "NamedDims", "OffsetArrays", "Test"]

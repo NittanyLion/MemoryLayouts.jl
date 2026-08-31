@@ -9,22 +9,25 @@ include( "layout.jl" )
 include( "stats.jl" )
 include( "visualization.jl" )
 
-function __init__()
-    get( ENV, "MEMORYLAYOUTS", "" ) ∈ ( "false", "no" ) && return
+"""
+    banner()
 
+Print the startup banner.  It is shown automatically when the package is loaded in an interactive
+session, unless the environment variable `MEMORYLAYOUTS` is set to `"false"` or `"no"`.
+"""
+function banner()
     width = 80
-    stars_h = "*"^width
-    
+    stars = "*"^width
+
     # Helper to pad text with stars on both sides
-    function line(str)
-        s_len = textwidth(String(str))
-        pad = width - 4 - s_len
-        pad_l = div(pad, 2)
-        pad_r = pad - pad_l
-        return styled"{(fg=0x00FF00):**}" * (" " ^ pad_l) * str * (" " ^ pad_r) * styled"{(fg=0x00FF00):**}"
+    function line( str )
+        pad = width - 4 - textwidth( String( str ) )
+        padl = div( pad, 2 )
+        padr = pad - padl
+        return styled"{(fg=0x00FF00):**}" * ( " " ^ padl ) * str * ( " " ^ padr ) * styled"{(fg=0x00FF00):**}"
     end
 
-    println( styled"\n{(fg=0x00FF00):$stars_h}" )
+    println( styled"\n{(fg=0x00FF00):$stars}" )
     println( line( styled"{bold,cyan:MemoryLayouts.jl} 🧠⚡" ) )
     println( line( styled"{italic:Optimize memory layout for maximum cache efficiency}" ) )
     println( line( "" ) )
@@ -32,6 +35,7 @@ function __init__()
     println( line( styled"• {magenta:layout( x )}" ) )
     println( line( styled"• {magenta:deeplayout( x )}" ) )
     println( line( styled"• {magenta:layout!( x )}" ) )
+    println( line( styled"• {magenta:withlayout( f )}" ) )
     println( line( styled"• {cyan:layoutstats( x )}" ) )
     println( line( styled"• {cyan:deeplayoutstats( x )}" ) )
     println( line( styled"• {green:visualizelayout( x )}" ) )
@@ -43,7 +47,13 @@ function __init__()
     println( line( "" ) )
     println( line( styled"{bold:Performance Tip:}" ) )
     println( line( styled"Use {magenta:alignment = 64} for AVX-512 SIMD" ) )
-    println( styled"{(fg=0x00FF00):$stars_h}\n" )
+    println( styled"{(fg=0x00FF00):$stars}\n" )
+end
+
+function __init__()
+    isinteractive() || return
+    get( ENV, "MEMORYLAYOUTS", "" ) ∈ ( "false", "no" ) && return
+    banner()
 end
 
 end
